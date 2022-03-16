@@ -13,7 +13,6 @@ export default {
    * point symbols and texts are always rotated with the view and pixels are
    * scaled during zoom animations
    * @api
-   * @deprecated
    */
   IMAGE: 'image',
   /**

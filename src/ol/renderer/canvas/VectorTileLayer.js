@@ -58,6 +58,7 @@ const IMAGE_REPLAYS = {
  * @type {!Object<string, Array<import("../../render/canvas/BuilderType.js").default>>}
  */
 const VECTOR_REPLAYS = {
+  'image': [ReplayType.DEFAULT],
   'hybrid': [ReplayType.IMAGE, ReplayType.TEXT, ReplayType.DEFAULT],
   'vector': [
     ReplayType.POLYGON,
@@ -657,6 +658,9 @@ class CanvasVectorTileLayerRenderer extends CanvasTileLayerRenderer {
       this.getLayer()
     );
     const renderMode = layer.getRenderMode();
+    if (renderMode === VectorTileRenderType.IMAGE) {
+      return this.container;
+    }
     const context = this.context;
     const alpha = context.globalAlpha;
     context.globalAlpha = layer.getOpacity();

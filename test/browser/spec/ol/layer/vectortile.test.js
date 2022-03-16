@@ -43,6 +43,11 @@ describe('ol.layer.VectorTile', function () {
         source: new VectorTileSource({}),
       });
       expect(layer.getRenderMode()).to.be('hybrid');
+      layer = new VectorTileLayer({
+        renderMode: 'image',
+        source: new VectorTileSource({}),
+      });
+      expect(layer.getRenderMode()).to.be('image');
       expect(function () {
         layer = new VectorTileLayer({
           renderMode: 'foo',
