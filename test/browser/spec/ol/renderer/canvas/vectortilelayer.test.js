@@ -11,12 +11,12 @@ import TileState from '../../../../../../src/ol/TileState.js';
 import VectorRenderTile from '../../../../../../src/ol/VectorRenderTile.js';
 import VectorTile from '../../../../../../src/ol/VectorTile.js';
 import VectorTileLayer from '../../../../../../src/ol/layer/VectorTile.js';
-import VectorTileRenderType from '../../../../../../src/ol/layer/VectorTileRenderType.js';
 import VectorTileSource from '../../../../../../src/ol/source/VectorTile.js';
 import View from '../../../../../../src/ol/View.js';
 import XYZ from '../../../../../../src/ol/source/XYZ.js';
 import {checkedFonts} from '../../../../../../src/ol/render/canvas.js';
 import {create} from '../../../../../../src/ol/transform.js';
+import {createFontStyle} from '../../../util.js';
 import {createXYZ} from '../../../../../../src/ol/tilegrid.js';
 import {getCenter} from '../../../../../../src/ol/extent.js';
 import {get as getProjection} from '../../../../../../src/ol/proj.js';
@@ -24,10 +24,14 @@ import {getUid} from '../../../../../../src/ol/util.js';
 
 describe('ol/renderer/canvas/VectorTileLayer', function () {
   describe('constructor', function () {
-    const head = document.getElementsByTagName('head')[0];
-    const font = document.createElement('link');
-    font.href = 'https://fonts.googleapis.com/css?family=Dancing+Script';
-    font.rel = 'stylesheet';
+    const fontFamily = 'Ubuntu - VectorTileLayerTest';
+    const font = createFontStyle({
+      fontFamily: fontFamily,
+      src: {
+        url: '/spec/ol/data/fonts/ubuntu-regular-webfont.woff2',
+        format: 'woff2',
+      },
+    });
 
     let map,
       layer,
@@ -136,7 +140,7 @@ describe('ol/renderer/canvas/VectorTileLayer', function () {
 
     it('does not render images for pure vector rendering', function () {
       const testLayer = new VectorTileLayer({
-        renderMode: VectorTileRenderType.VECTOR,
+        renderMode: 'vector',
         source: source,
         style: layerStyle,
       });
@@ -217,14 +221,18 @@ describe('ol/renderer/canvas/VectorTileLayer', function () {
     it('re-renders for fonts that become available', function (done) {
       map.renderSync();
       checkedFonts.values_ = {};
-      head.appendChild(font);
-      layerStyle[0].getText().setFont('12px "Dancing Script",sans-serif');
+      font.add();
+      layerStyle[0].getText().setFont(`12px "${fontFamily}",sans-serif`);
       layer.changed();
       const revision = layer.getRevision();
       setTimeout(function () {
-        head.removeChild(font);
-        expect(layer.getRevision()).to.be(revision + 1);
-        done();
+        try {
+          font.remove();
+          expect(layer.getRevision()).to.be(revision + 1);
+          done();
+        } catch (e) {
+          done(e);
+        }
       }, 1600);
     });
 
@@ -335,6 +343,35 @@ describe('ol/renderer/canvas/VectorTileLayer', function () {
         done();
       });
     });
+
+    it('changes background when function returns a different color', function (done) {
+      let count = 0;
+      layer.setBackground(function (resolution) {
+        const backgrounds = [
+          undefined,
+          'rgba(255, 0, 0, 0.5)',
+          'rgba(0, 0, 255, 0.5)',
+          undefined,
+        ];
+
+        expect(resolution).to.be(map.getView().getResolution());
+        return backgrounds[count++];
+      });
+      map.once('rendercomplete', function () {
+        expect(layer.getRenderer().container.style.backgroundColor).to.be('');
+        map.renderSync();
+        expect(layer.getRenderer().container.style.backgroundColor).to.be(
+          'rgba(255, 0, 0, 0.5)'
+        );
+        map.renderSync();
+        expect(layer.getRenderer().container.style.backgroundColor).to.be(
+          'rgba(0, 0, 255, 0.5)'
+        );
+        map.renderSync();
+        expect(layer.getRenderer().container.style.backgroundColor).to.be('');
+        done();
+      });
+    });
   });
 
   describe('#prepareFrame', function () {
@@ -388,6 +425,88 @@ describe('ol/renderer/canvas/VectorTileLayer', function () {
       layer.changed();
       renderer.renderFrame(frameState, null);
       expect(replayState.renderedTileRevision).to.be(revision + 1);
+    });
+  });
+
+  describe('#renderFrame', function () {
+    it('uses correct image - vector sequence in vector mode', function () {
+      const layer = new VectorTileLayer({
+        renderMode: 'vector',
+        source: new VectorTileSource({
+          tileGrid: createXYZ(),
+        }),
+      });
+      const sourceTile = new VectorTile([0, 0, 0], 2);
+      sourceTile.features_ = [new RenderFeature('Point', [0, 0])];
+      sourceTile.getImage = function () {
+        return document.createElement('canvas');
+      };
+      layer.getSource().getSourceTiles = () => [sourceTile];
+      const tile = new VectorRenderTile([0, 0, 0], 1, [0, 0, 0], function () {
+        return sourceTile;
+      });
+      tile.transition_ = 0;
+      tile.replayState_[getUid(layer)] = [{dirty: true}];
+      tile.setState(TileState.LOADED);
+      layer.getSource().getTile = function () {
+        return tile;
+      };
+      const renderer = new CanvasVectorTileLayerRenderer(layer);
+      renderer.isDrawableTile = function () {
+        return true;
+      };
+      const proj = getProjection('EPSG:3857');
+      const frameState = {
+        layerStatesArray: [layer.getLayerState()],
+        layerIndex: 0,
+        extent: proj.getExtent(),
+        pixelRatio: 1,
+        pixelToCoordinateTransform: create(),
+        time: Date.now(),
+        viewHints: [],
+        viewState: {
+          center: [0, 0],
+          resolution: 156543.03392804097,
+          projection: proj,
+        },
+        size: [256, 256],
+        usedTiles: {},
+        wantedTiles: {},
+      };
+
+      renderer.container = document.createElement('div');
+      const sequence = [];
+      renderer.context = {
+        clearRect: () => sequence.push('clearRect'),
+        save: () => sequence.push('save'),
+        restore: () => sequence.push('restore'),
+        beginPath: () => sequence.push('beginPath'),
+        moveTo: () => sequence.push('moveTo'),
+        lineTo: () => sequence.push('lineTo'),
+        clip: () => sequence.push('clip'),
+        canvas: {
+          style: {
+            transform: '',
+          },
+        },
+      };
+
+      layer.on('prerender', () => sequence.push('prerender'));
+      layer.on('postrender', () => sequence.push('postrender'));
+      renderer.renderFrame(frameState);
+      expect(sequence).to.eql([
+        'prerender',
+        'clearRect',
+        'save',
+        'beginPath',
+        'moveTo',
+        'lineTo',
+        'lineTo',
+        'lineTo',
+        'clip',
+        'restore',
+        'postrender',
+      ]);
     });
   });
 

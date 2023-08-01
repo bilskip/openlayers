@@ -3,8 +3,7 @@
  */
 import Layer from './Layer.js';
 import WebGLPointsLayerRenderer from '../renderer/webgl/PointsLayer.js';
-import {assign} from '../obj.js';
-import {parseLiteralStyle} from '../webgl/ShaderBuilder.js';
+import {parseLiteralStyle} from '../webgl/styleparser.js';
 
 /**
  * @template {import("../source/Vector.js").default<import("../geom/Point.js").default>} VectorSourceType
@@ -77,18 +76,18 @@ class WebGLPointsLayer extends Layer {
    * @param {Options<VectorSourceType>} options Options.
    */
   constructor(options) {
-    const baseOptions = assign({}, options);
+    const baseOptions = Object.assign({}, options);
 
     super(baseOptions);
 
     /**
      * @private
-     * @type {import('../webgl/ShaderBuilder.js').StyleParseResult}
+     * @type {import('../webgl/styleparser.js').StyleParseResult}
      */
     this.parseResult_ = parseLiteralStyle(options.style);
 
     /**
-     * @type {Object<string, (string|number)>}
+     * @type {Object<string, (string|number|Array<number>|boolean)>}
      * @private
      */
     this.styleVariables_ = options.style.variables || {};
@@ -101,17 +100,21 @@ class WebGLPointsLayer extends Layer {
   }
 
   createRenderer() {
+    const attributes = Object.keys(this.parseResult_.attributes).map(
+      (name) => ({
+        name,
+        ...this.parseResult_.attributes[name],
+      })
+    );
     return new WebGLPointsLayerRenderer(this, {
       vertexShader: this.parseResult_.builder.getSymbolVertexShader(),
       fragmentShader: this.parseResult_.builder.getSymbolFragmentShader(),
-      hitVertexShader:
-        !this.hitDetectionDisabled_ &&
-        this.parseResult_.builder.getSymbolVertexShader(true),
-      hitFragmentShader:
-        !this.hitDetectionDisabled_ &&
-        this.parseResult_.builder.getSymbolFragmentShader(true),
+      hitDetectionEnabled: !this.hitDetectionDisabled_,
       uniforms: this.parseResult_.uniforms,
-      attributes: this.parseResult_.attributes,
+      attributes:
+        /** @type {Array<import('../renderer/webgl/PointsLayer.js').CustomAttribute>} */ (
+          attributes
+        ),
     });
   }
 
@@ -120,7 +123,7 @@ class WebGLPointsLayer extends Layer {
    * @param {Object<string, number>} variables Variables to update.
    */
   updateStyleVariables(variables) {
-    assign(this.styleVariables_, variables);
+    Object.assign(this.styleVariables_, variables);
     this.changed();
   }
 }

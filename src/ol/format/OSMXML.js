@@ -3,7 +3,6 @@
  */
 // FIXME add typedef for stack state objects
 import Feature from '../Feature.js';
-import GeometryLayout from '../geom/GeometryLayout.js';
 import LineString from '../geom/LineString.js';
 import Point from '../geom/Point.js';
 import Polygon from '../geom/Polygon.js';
@@ -60,11 +59,11 @@ class OSMXML extends XMLFeature {
   /**
    * @protected
    * @param {Element} node Node.
-   * @param {import("./Feature.js").ReadOptions} [opt_options] Options.
+   * @param {import("./Feature.js").ReadOptions} [options] Options.
    * @return {Array<import("../Feature.js").default>} Features.
    */
-  readFeaturesFromNode(node, opt_options) {
-    const options = this.getReadOptions(node, opt_options);
+  readFeaturesFromNode(node, options) {
+    options = this.getReadOptions(node, options);
     if (node.localName == 'osm') {
       const state = pushParseAndPop(
         {
@@ -80,19 +79,21 @@ class OSMXML extends XMLFeature {
       for (let j = 0; j < state.ways.length; j++) {
         const values = /** @type {Object} */ (state.ways[j]);
         /** @type {Array<number>} */
-        const flatCoordinates = [];
-        for (let i = 0, ii = values.ndrefs.length; i < ii; i++) {
-          const point = state.nodes[values.ndrefs[i]];
-          extend(flatCoordinates, point);
+        const flatCoordinates = values.flatCoordinates;
+        if (!flatCoordinates.length) {
+          for (let i = 0, ii = values.ndrefs.length; i < ii; i++) {
+            const point = state.nodes[values.ndrefs[i]];
+            extend(flatCoordinates, point);
+          }
         }
         let geometry;
         if (values.ndrefs[0] == values.ndrefs[values.ndrefs.length - 1]) {
           // closed way
-          geometry = new Polygon(flatCoordinates, GeometryLayout.XY, [
+          geometry = new Polygon(flatCoordinates, 'XY', [
             flatCoordinates.length,
           ]);
         } else {
-          geometry = new LineString(flatCoordinates, GeometryLayout.XY);
+          geometry = new LineString(flatCoordinates, 'XY');
         }
         transformGeometryWithOptions(geometry, false, options);
         const feature = new Feature(geometry);
@@ -166,6 +167,7 @@ function readWay(node, objectStack) {
     {
       id: id,
       ndrefs: [],
+      flatCoordinates: [],
       tags: {},
     },
     WAY_PARSERS,
@@ -183,6 +185,10 @@ function readWay(node, objectStack) {
 function readNd(node, objectStack) {
   const values = /** @type {Object} */ (objectStack[objectStack.length - 1]);
   values.ndrefs.push(node.getAttribute('ref'));
+  if (node.hasAttribute('lon') && node.hasAttribute('lat')) {
+    values.flatCoordinates.push(parseFloat(node.getAttribute('lon')));
+    values.flatCoordinates.push(parseFloat(node.getAttribute('lat')));
+  }
 }
 
 /**

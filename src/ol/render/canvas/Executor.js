@@ -3,7 +3,6 @@
  */
 import CanvasInstruction from './Instruction.js';
 import {TEXT_ALIGN} from './TextBuilder.js';
-import {WORKER_OFFSCREEN_CANVAS} from '../../has.js';
 import {
   apply as applyTransform,
   compose as composeTransform,
@@ -91,7 +90,7 @@ const rtlRegEx = new RegExp(
 
 /**
  * @param {string} text Text.
- * @param {string} align Alignment.
+ * @param {CanvasTextAlign} align Alignment.
  * @return {number} Text alignment.
  */
 function horizontalTextAlign(text, align) {
@@ -239,10 +238,12 @@ class Executor {
       textState.scale[1] * pixelRatio,
     ];
     const textIsArray = Array.isArray(text);
-    const align = horizontalTextAlign(
-      textIsArray ? text[0] : text,
-      textState.textAlign || defaultTextAlign
-    );
+    const align = textState.justify
+      ? TEXT_ALIGN[textState.justify]
+      : horizontalTextAlign(
+          Array.isArray(text) ? text[0] : text,
+          textState.textAlign || defaultTextAlign
+        );
     const strokeWidth =
       strokeKey && strokeState.lineWidth ? strokeState.lineWidth : 0;
 
@@ -274,12 +275,8 @@ class Executor {
       contextInstructions.push('lineCap', strokeState.lineCap);
       contextInstructions.push('lineJoin', strokeState.lineJoin);
       contextInstructions.push('miterLimit', strokeState.miterLimit);
-      // eslint-disable-next-line
-      const Context = WORKER_OFFSCREEN_CANVAS ? OffscreenCanvasRenderingContext2D : CanvasRenderingContext2D;
-      if (Context.prototype.setLineDash) {
-        contextInstructions.push('setLineDash', [strokeState.lineDash]);
-        contextInstructions.push('lineDashOffset', strokeState.lineDashOffset);
-      }
+      contextInstructions.push('setLineDash', [strokeState.lineDash]);
+      contextInstructions.push('lineDashOffset', strokeState.lineDashOffset);
     }
     if (fillKey) {
       contextInstructions.push('fillStyle', fillState.fillStyle);
@@ -583,10 +580,8 @@ class Executor {
     context.lineCap = /** @type {CanvasLineCap} */ (instruction[3]);
     context.lineJoin = /** @type {CanvasLineJoin} */ (instruction[4]);
     context.miterLimit = /** @type {number} */ (instruction[5]);
-    if (context.setLineDash) {
-      context.lineDashOffset = /** @type {number} */ (instruction[7]);
-      context.setLineDash(/** @type {Array<number>} */ (instruction[6]));
-    }
+    context.lineDashOffset = /** @type {number} */ (instruction[7]);
+    context.setLineDash(/** @type {Array<number>} */ (instruction[6]));
   }
 
   /**
@@ -633,10 +628,10 @@ class Executor {
    * @param {import("../../transform.js").Transform} transform Transform.
    * @param {Array<*>} instructions Instructions array.
    * @param {boolean} snapToPixel Snap point symbols and text to integer pixels.
-   * @param {FeatureCallback<T>} [opt_featureCallback] Feature callback.
-   * @param {import("../../extent.js").Extent} [opt_hitExtent] Only check
+   * @param {FeatureCallback<T>} [featureCallback] Feature callback.
+   * @param {import("../../extent.js").Extent} [hitExtent] Only check
    *     features that intersect this extent.
-   * @param {import("rbush").default} [opt_declutterTree] Declutter tree.
+   * @param {import("rbush").default} [declutterTree] Declutter tree.
    * @return {T|undefined} Callback result.
    * @template T
    */
@@ -646,9 +641,9 @@ class Executor {
     transform,
     instructions,
     snapToPixel,
-    opt_featureCallback,
-    opt_hitExtent,
-    opt_declutterTree
+    featureCallback,
+    hitExtent,
+    declutterTree
   ) {
     /** @type {Array<number>} */
     let pixelCoordinates;
@@ -719,8 +714,8 @@ class Executor {
           if (!feature.getGeometry()) {
             i = /** @type {number} */ (instruction[2]);
           } else if (
-            opt_hitExtent !== undefined &&
-            !intersects(opt_hitExtent, currentGeometry.getExtent())
+            hitExtent !== undefined &&
+            !intersects(hitExtent, currentGeometry.getExtent())
           ) {
             i = /** @type {number} */ (instruction[2]) + 1;
           } else {
@@ -806,17 +801,21 @@ class Executor {
             instruction[12]
           );
           let width = /** @type {number} */ (instruction[13]);
-          const declutterImageWithText =
-            /** @type {import("../canvas.js").DeclutterImageWithText} */ (
+          const declutterMode =
+            /** @type {"declutter"|"obstacle"|"none"|undefined} */ (
               instruction[14]
             );
+          const declutterImageWithText =
+            /** @type {import("../canvas.js").DeclutterImageWithText} */ (
+              instruction[15]
+            );
 
-          if (!image && instruction.length >= 19) {
+          if (!image && instruction.length >= 20) {
             // create label images
-            text = /** @type {string} */ (instruction[18]);
-            textKey = /** @type {string} */ (instruction[19]);
-            strokeKey = /** @type {string} */ (instruction[20]);
-            fillKey = /** @type {string} */ (instruction[21]);
+            text = /** @type {string} */ (instruction[19]);
+            textKey = /** @type {string} */ (instruction[20]);
+            strokeKey = /** @type {string} */ (instruction[21]);
+            fillKey = /** @type {string} */ (instruction[22]);
             const labelWithAnchor = this.drawLabelWithPointPlacement_(
               text,
               textKey,
@@ -825,10 +824,10 @@ class Executor {
             );
             image = labelWithAnchor.label;
             instruction[3] = image;
-            const textOffsetX = /** @type {number} */ (instruction[22]);
+            const textOffsetX = /** @type {number} */ (instruction[23]);
             anchorX = (labelWithAnchor.anchorX - textOffsetX) * this.pixelRatio;
             instruction[4] = anchorX;
-            const textOffsetY = /** @type {number} */ (instruction[23]);
+            const textOffsetY = /** @type {number} */ (instruction[24]);
             anchorY = (labelWithAnchor.anchorY - textOffsetY) * this.pixelRatio;
             instruction[5] = anchorY;
             height = image.height;
@@ -838,15 +837,15 @@ class Executor {
           }
 
           let geometryWidths;
-          if (instruction.length > 24) {
-            geometryWidths = /** @type {number} */ (instruction[24]);
+          if (instruction.length > 25) {
+            geometryWidths = /** @type {number} */ (instruction[25]);
           }
 
           let padding, backgroundFill, backgroundStroke;
-          if (instruction.length > 16) {
-            padding = /** @type {Array<number>} */ (instruction[15]);
-            backgroundFill = /** @type {boolean} */ (instruction[16]);
-            backgroundStroke = /** @type {boolean} */ (instruction[17]);
+          if (instruction.length > 17) {
+            padding = /** @type {Array<number>} */ (instruction[16]);
+            backgroundFill = /** @type {boolean} */ (instruction[17]);
+            backgroundStroke = /** @type {boolean} */ (instruction[18]);
           } else {
             padding = defaultPadding;
             backgroundFill = false;
@@ -900,39 +899,43 @@ class Executor {
                 ? /** @type {Array<*>} */ (lastStrokeInstruction)
                 : null,
             ];
-            let imageArgs;
-            let imageDeclutterBox;
-            if (opt_declutterTree && declutterImageWithText) {
-              const index = dd - d;
-              if (!declutterImageWithText[index]) {
-                // We now have the image for an image+text combination.
-                declutterImageWithText[index] = args;
-                // Don't render anything for now, wait for the text.
+            if (declutterTree) {
+              if (declutterMode === 'none') {
+                // not rendered in declutter group
                 continue;
-              }
-              imageArgs = declutterImageWithText[index];
-              delete declutterImageWithText[index];
-              imageDeclutterBox = getDeclutterBox(imageArgs);
-              if (opt_declutterTree.collides(imageDeclutterBox)) {
+              } else if (declutterMode === 'obstacle') {
+                // will always be drawn, thus no collision detection, but insert as obstacle
+                declutterTree.insert(dimensions.declutterBox);
                 continue;
+              } else {
+                let imageArgs;
+                let imageDeclutterBox;
+                if (declutterImageWithText) {
+                  const index = dd - d;
+                  if (!declutterImageWithText[index]) {
+                    // We now have the image for an image+text combination.
+                    declutterImageWithText[index] = args;
+                    // Don't render anything for now, wait for the text.
+                    continue;
+                  }
+                  imageArgs = declutterImageWithText[index];
+                  delete declutterImageWithText[index];
+                  imageDeclutterBox = getDeclutterBox(imageArgs);
+                  if (declutterTree.collides(imageDeclutterBox)) {
+                    continue;
+                  }
+                }
+                if (declutterTree.collides(dimensions.declutterBox)) {
+                  continue;
+                }
+                if (imageArgs) {
+                  // We now have image and text for an image+text combination.
+                  declutterTree.insert(imageDeclutterBox);
+                  // Render the image before we render the text.
+                  this.replayImageOrLabel_.apply(this, imageArgs);
+                }
+                declutterTree.insert(dimensions.declutterBox);
               }
-            }
-            if (
-              opt_declutterTree &&
-              opt_declutterTree.collides(dimensions.declutterBox)
-            ) {
-              continue;
-            }
-            if (imageArgs) {
-              // We now have image and text for an image+text combination.
-              if (opt_declutterTree) {
-                opt_declutterTree.insert(imageDeclutterBox);
-              }
-              // Render the image before we render the text.
-              this.replayImageOrLabel_.apply(this, imageArgs);
-            }
-            if (opt_declutterTree) {
-              opt_declutterTree.insert(dimensions.declutterBox);
             }
             this.replayImageOrLabel_.apply(this, args);
           }
@@ -1028,8 +1031,8 @@ class Executor {
                     feature
                   );
                   if (
-                    opt_declutterTree &&
-                    opt_declutterTree.collides(dimensions.declutterBox)
+                    declutterTree &&
+                    declutterTree.collides(dimensions.declutterBox)
                   ) {
                     break drawChars;
                   }
@@ -1070,8 +1073,8 @@ class Executor {
                     feature
                   );
                   if (
-                    opt_declutterTree &&
-                    opt_declutterTree.collides(dimensions.declutterBox)
+                    declutterTree &&
+                    declutterTree.collides(dimensions.declutterBox)
                   ) {
                     break drawChars;
                   }
@@ -1086,10 +1089,8 @@ class Executor {
                   ]);
                 }
               }
-              if (opt_declutterTree) {
-                opt_declutterTree.load(
-                  replayImageOrLabelArgs.map(getDeclutterBox)
-                );
+              if (declutterTree) {
+                declutterTree.load(replayImageOrLabelArgs.map(getDeclutterBox));
               }
               for (let i = 0, ii = replayImageOrLabelArgs.length; i < ii; ++i) {
                 this.replayImageOrLabel_.apply(this, replayImageOrLabelArgs[i]);
@@ -1099,11 +1100,11 @@ class Executor {
           ++i;
           break;
         case CanvasInstruction.END_GEOMETRY:
-          if (opt_featureCallback !== undefined) {
+          if (featureCallback !== undefined) {
             feature = /** @type {import("../../Feature.js").FeatureLike} */ (
               instruction[1]
             );
-            const result = opt_featureCallback(feature, currentGeometry);
+            const result = featureCallback(feature, currentGeometry);
             if (result) {
               return result;
             }
@@ -1179,8 +1180,8 @@ class Executor {
           }
           ++i;
           break;
-        default:
-          ++i; // consume the instruction anyway, to avoid an infinite loop
+        default: // consume the instruction anyway, to avoid an infinite loop
+          ++i;
           break;
       }
     }
@@ -1199,7 +1200,7 @@ class Executor {
    * @param {import("../../transform.js").Transform} transform Transform.
    * @param {number} viewRotation View rotation.
    * @param {boolean} snapToPixel Snap point symbols and text to integer pixels.
-   * @param {import("rbush").default} [opt_declutterTree] Declutter tree.
+   * @param {import("rbush").default} [declutterTree] Declutter tree.
    */
   execute(
     context,
@@ -1207,7 +1208,7 @@ class Executor {
     transform,
     viewRotation,
     snapToPixel,
-    opt_declutterTree
+    declutterTree
   ) {
     this.viewRotation_ = viewRotation;
     this.execute_(
@@ -1218,7 +1219,7 @@ class Executor {
       snapToPixel,
       undefined,
       undefined,
-      opt_declutterTree
+      declutterTree
     );
   }
 
@@ -1226,8 +1227,8 @@ class Executor {
    * @param {CanvasRenderingContext2D} context Context.
    * @param {import("../../transform.js").Transform} transform Transform.
    * @param {number} viewRotation View rotation.
-   * @param {FeatureCallback<T>} [opt_featureCallback] Feature callback.
-   * @param {import("../../extent.js").Extent} [opt_hitExtent] Only check
+   * @param {FeatureCallback<T>} [featureCallback] Feature callback.
+   * @param {import("../../extent.js").Extent} [hitExtent] Only check
    *     features that intersect this extent.
    * @return {T|undefined} Callback result.
    * @template T
@@ -1236,8 +1237,8 @@ class Executor {
     context,
     transform,
     viewRotation,
-    opt_featureCallback,
-    opt_hitExtent
+    featureCallback,
+    hitExtent
   ) {
     this.viewRotation_ = viewRotation;
     return this.execute_(
@@ -1246,8 +1247,8 @@ class Executor {
       transform,
       this.hitDetectionInstructions,
       true,
-      opt_featureCallback,
-      opt_hitExtent
+      featureCallback,
+      hitExtent
     );
   }
 }

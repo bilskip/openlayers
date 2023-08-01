@@ -3,12 +3,12 @@ import ImageState from '../../../../../src/ol/ImageState.js';
 import ImageWMS from '../../../../../src/ol/source/ImageWMS.js';
 import Map from '../../../../../src/ol/Map.js';
 import View from '../../../../../src/ol/View.js';
+import {fromLonLat, get as getProjection} from '../../../../../src/ol/proj.js';
 import {
   getForViewAndSize,
   getHeight,
   getWidth,
 } from '../../../../../src/ol/extent.js';
-import {get as getProjection} from '../../../../../src/ol/proj.js';
 
 describe('ol/source/ImageWMS', function () {
   let extent, pixelRatio, options, optionsReproj, projection, resolution;
@@ -55,8 +55,19 @@ describe('ol/source/ImageWMS', function () {
         const bbox = queryData.get('BBOX').split(',').map(Number);
         const bboxAspectRatio = (bbox[3] - bbox[1]) / (bbox[2] - bbox[0]);
         const imageAspectRatio = imageWidth / imageHeight;
-        expect(imageWidth).to.be(Math.ceil((viewWidth / resolution) * ratio));
-        expect(imageHeight).to.be(Math.ceil((viewHeight / resolution) * ratio));
+        const marginWidth = Math.ceil(
+          ((ratio - 1) * viewWidth) / resolution / 2
+        );
+        const marginHeight = Math.ceil(
+          ((ratio - 1) * viewHeight) / resolution / 2
+        );
+
+        expect(imageWidth).to.be(
+          Math.round(viewWidth / resolution) + 2 * marginWidth
+        );
+        expect(imageHeight).to.be(
+          Math.round(viewHeight / resolution) + 2 * marginHeight
+        );
         expect(bboxAspectRatio).to.roughlyEqual(imageAspectRatio, 1e-12);
       });
     });
@@ -206,8 +217,8 @@ describe('ol/source/ImageWMS', function () {
 
     it('extends FORMAT_OPTIONS if it is already present', function () {
       options.serverType = 'geoserver';
-      const source = new ImageWMS(options);
       options.params.FORMAT_OPTIONS = 'param1:value1';
+      const source = new ImageWMS(options);
       pixelRatio = 2;
       const image = source.getImage(extent, resolution, pixelRatio, projection);
       const uri = new URL(image.src_);
@@ -488,6 +499,79 @@ describe('ol/source/ImageWMS', function () {
         done();
       });
       source.refresh();
+    });
+  });
+
+  describe('reprojection', function () {
+    let map, source;
+    const queryData = [];
+    beforeEach(function () {
+      const options = {
+        params: {
+          LAYERS: 'layer',
+        },
+        ratio: 1,
+        url: 'http://example.com/wms',
+        projection: 'EPSG:4326',
+      };
+      source = new ImageWMS(options);
+      source.setImageLoadFunction(function (image, src) {
+        queryData.push(new URL(src).searchParams);
+        image.state = ImageState.LOADED;
+        source.loading = false;
+      });
+      const target = document.createElement('div');
+      target.style.width = '256px';
+      target.style.height = '256px';
+      document.body.appendChild(target);
+      map = new Map({
+        target: target,
+        layers: [
+          new Image({
+            source: source,
+          }),
+        ],
+        view: new View({
+          zoom: 0,
+        }),
+      });
+    });
+
+    afterEach(function () {
+      document.body.removeChild(map.getTargetElement());
+      map.setTarget(null);
+      queryData.length = 0;
+      getProjection('EPSG:3857').setGlobal(true);
+      getProjection('EPSG:4326').setGlobal(true);
+    });
+
+    it('loads wrapped extents when both projections are global', function (done) {
+      map.once('rendercomplete', function () {
+        expect(queryData.length).to.be(1);
+        expect(queryData[0].get('BBOX')).to.be('-85.078125,181,85.078125,541');
+        expect(queryData[0].get('WIDTH')).to.be('256');
+        expect(queryData[0].get('HEIGHT')).to.be('121');
+        done();
+      });
+      map.getView().setCenter(fromLonLat([361, 0]));
+    });
+
+    it('does not load outside extent when view projection is not global', function (done) {
+      getProjection('EPSG:3857').setGlobal(false);
+      map.once('rendercomplete', function () {
+        expect(queryData.length).to.be(0);
+        done();
+      });
+      map.getView().setCenter(fromLonLat([361, 0]));
+    });
+
+    it('does not load outside extent when source projection is not global', function (done) {
+      getProjection('EPSG:4326').setGlobal(false);
+      map.once('rendercomplete', function () {
+        expect(queryData.length).to.be(0);
+        done();
+      });
+      map.getView().setCenter(fromLonLat([361, 0]));
     });
   });
 });

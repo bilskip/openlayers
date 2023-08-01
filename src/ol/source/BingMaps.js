@@ -2,14 +2,12 @@
  * @module ol/source/BingMaps
  */
 
-import SourceState from './State.js';
 import TileImage from './TileImage.js';
 import {applyTransform, intersects} from '../extent.js';
 import {createFromTileUrlFunctions} from '../tileurlfunction.js';
 import {createOrUpdate} from '../tilecoord.js';
 import {createXYZ, extentFromProjection} from '../tilegrid.js';
 import {get as getProjection, getTransformFromProjections} from '../proj.js';
-import {jsonp as requestJSONP} from '../net.js';
 
 /**
  * @param {import('../tilecoord.js').TileCoord} tileCoord Tile coord.
@@ -53,7 +51,6 @@ const TOS_ATTRIBUTION =
  * @property {string} [culture='en-us'] Culture code.
  * @property {string} key Bing Maps API key. Get yours at https://www.bingmapsportal.com/.
  * @property {string} imagerySet Type of imagery.
- * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
  * @property {number} [maxZoom=21] Max zoom. Default is what's advertized by the BingMaps service.
@@ -71,6 +68,8 @@ const TOS_ATTRIBUTION =
  * @property {number|import("../array.js").NearestDirectionFunction} [zDirection=0]
  * Choose whether to use tiles with a higher or lower zoom level when between integer
  * zoom levels. See {@link module:ol/tilegrid/TileGrid~TileGrid#getZForResolution}.
+ * @property {boolean} placeholderTiles Whether to show BingMaps placeholder tiles when zoomed past the maximum level provided in an area. When `false`, requests beyond
+ * the maximum zoom level will return no tile. When `true`, the placeholder tile will be returned.
  */
 
 /**
@@ -122,20 +121,14 @@ class BingMaps extends TileImage {
   constructor(options) {
     const hidpi = options.hidpi !== undefined ? options.hidpi : false;
 
-    let interpolate =
-      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
-    if (options.interpolate !== undefined) {
-      interpolate = options.interpolate;
-    }
-
     super({
       cacheSize: options.cacheSize,
       crossOrigin: 'anonymous',
-      interpolate: interpolate,
+      interpolate: options.interpolate,
       opaque: true,
       projection: getProjection('EPSG:3857'),
       reprojectionErrorThreshold: options.reprojectionErrorThreshold,
-      state: SourceState.LOADING,
+      state: 'loading',
       tileLoadFunction: options.tileLoadFunction,
       tilePixelRatio: hidpi ? 2 : 1,
       wrapX: options.wrapX !== undefined ? options.wrapX : true,
@@ -173,6 +166,12 @@ class BingMaps extends TileImage {
      */
     this.imagerySet_ = options.imagerySet;
 
+    /**
+     * @private
+     * @type {boolean}
+     */
+    this.placeholderTiles_ = options.placeholderTiles;
+
     const url =
       'https://dev.virtualearth.net/REST/v1/Imagery/Metadata/' +
       this.imagerySet_ +
@@ -181,12 +180,9 @@ class BingMaps extends TileImage {
       '&c=' +
       this.culture_;
 
-    requestJSONP(
-      url,
-      this.handleImageryMetadataResponse.bind(this),
-      undefined,
-      'jsonp'
-    );
+    fetch(url)
+      .then((response) => response.json())
+      .then((json) => this.handleImageryMetadataResponse(json));
   }
 
   /**
@@ -220,7 +216,7 @@ class BingMaps extends TileImage {
       response.resourceSets.length != 1 ||
       response.resourceSets[0].resources.length != 1
     ) {
-      this.setState(SourceState.ERROR);
+      this.setState('error');
       return;
     }
 
@@ -245,6 +241,7 @@ class BingMaps extends TileImage {
 
     const culture = this.culture_;
     const hidpi = this.hidpi_;
+    const placeholderTiles = this.placeholderTiles_;
     this.tileUrlFunction = createFromTileUrlFunctions(
       resource.imageUrlSubdomains.map(function (subdomain) {
         /** @type {import('../tilecoord.js').TileCoord} */
@@ -262,19 +259,27 @@ class BingMaps extends TileImage {
           function (tileCoord, pixelRatio, projection) {
             if (!tileCoord) {
               return undefined;
-            } else {
-              createOrUpdate(
-                tileCoord[0],
-                tileCoord[1],
-                tileCoord[2],
-                quadKeyTileCoord
-              );
-              let url = imageUrl;
-              if (hidpi) {
-                url += '&dpi=d1&device=mobile';
-              }
-              return url.replace('{quadkey}', quadKey(quadKeyTileCoord));
             }
+            createOrUpdate(
+              tileCoord[0],
+              tileCoord[1],
+              tileCoord[2],
+              quadKeyTileCoord
+            );
+            const url = new URL(
+              imageUrl.replace('{quadkey}', quadKey(quadKeyTileCoord))
+            );
+            const params = url.searchParams;
+            if (hidpi) {
+              params.set('dpi', 'd1');
+              params.set('device', 'mobile');
+            }
+            if (placeholderTiles === true) {
+              params.delete('n');
+            } else if (placeholderTiles === false) {
+              params.set('n', 'z');
+            }
+            return url.toString();
           }
         );
       })
@@ -286,50 +291,45 @@ class BingMaps extends TileImage {
         this.getProjection()
       );
 
-      this.setAttributions(
-        function (frameState) {
-          const attributions = [];
-          const viewState = frameState.viewState;
-          const tileGrid = this.getTileGrid();
-          const z = tileGrid.getZForResolution(
-            viewState.resolution,
-            this.zDirection
-          );
-          const tileCoord = tileGrid.getTileCoordForCoordAndZ(
-            viewState.center,
-            z
-          );
-          const zoom = tileCoord[0];
-          resource.imageryProviders.map(function (imageryProvider) {
-            let intersecting = false;
-            const coverageAreas = imageryProvider.coverageAreas;
-            for (let i = 0, ii = coverageAreas.length; i < ii; ++i) {
-              const coverageArea = coverageAreas[i];
-              if (
-                zoom >= coverageArea.zoomMin &&
-                zoom <= coverageArea.zoomMax
-              ) {
-                const bbox = coverageArea.bbox;
-                const epsg4326Extent = [bbox[1], bbox[0], bbox[3], bbox[2]];
-                const extent = applyTransform(epsg4326Extent, transform);
-                if (intersects(extent, frameState.extent)) {
-                  intersecting = true;
-                  break;
-                }
+      this.setAttributions((frameState) => {
+        const attributions = [];
+        const viewState = frameState.viewState;
+        const tileGrid = this.getTileGrid();
+        const z = tileGrid.getZForResolution(
+          viewState.resolution,
+          this.zDirection
+        );
+        const tileCoord = tileGrid.getTileCoordForCoordAndZ(
+          viewState.center,
+          z
+        );
+        const zoom = tileCoord[0];
+        resource.imageryProviders.map(function (imageryProvider) {
+          let intersecting = false;
+          const coverageAreas = imageryProvider.coverageAreas;
+          for (let i = 0, ii = coverageAreas.length; i < ii; ++i) {
+            const coverageArea = coverageAreas[i];
+            if (zoom >= coverageArea.zoomMin && zoom <= coverageArea.zoomMax) {
+              const bbox = coverageArea.bbox;
+              const epsg4326Extent = [bbox[1], bbox[0], bbox[3], bbox[2]];
+              const extent = applyTransform(epsg4326Extent, transform);
+              if (intersects(extent, frameState.extent)) {
+                intersecting = true;
+                break;
               }
             }
-            if (intersecting) {
-              attributions.push(imageryProvider.attribution);
-            }
-          });
+          }
+          if (intersecting) {
+            attributions.push(imageryProvider.attribution);
+          }
+        });
 
-          attributions.push(TOS_ATTRIBUTION);
-          return attributions;
-        }.bind(this)
-      );
+        attributions.push(TOS_ATTRIBUTION);
+        return attributions;
+      });
     }
 
-    this.setState(SourceState.READY);
+    this.setState('ready');
   }
 }
 

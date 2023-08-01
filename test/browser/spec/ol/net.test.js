@@ -36,7 +36,7 @@ describe('ol/net', function () {
   });
 
   describe('jsonp()', function () {
-    const head = document.getElementsByTagName('head')[0];
+    const head = document.head;
     const origAppendChild = head.appendChild;
     const origCreateElement = document.createElement;
     const origSetTimeout = setTimeout;
@@ -58,9 +58,8 @@ describe('ol/net', function () {
       document.createElement = function (arg) {
         if (arg == 'script') {
           return element;
-        } else {
-          return origCreateElement.apply(document, arguments);
         }
+        return origCreateElement.apply(document, arguments);
       };
       head.appendChild = function (el) {
         if (el === element) {

@@ -1,14 +1,16 @@
 import Feature from '../../../../../../src/ol/Feature.js';
 import GeoJSON from '../../../../../../src/ol/format/GeoJSON.js';
 import Map from '../../../../../../src/ol/Map.js';
+import OSM from '../../../../../../src/ol/source/OSM.js';
 import Point from '../../../../../../src/ol/geom/Point.js';
+import TileLayer from '../../../../../../src/ol/layer/Tile.js';
 import VectorLayer from '../../../../../../src/ol/layer/Vector.js';
 import VectorSource from '../../../../../../src/ol/source/Vector.js';
 import View from '../../../../../../src/ol/View.js';
 import ViewHint from '../../../../../../src/ol/ViewHint.js';
 import WebGLPointsLayer from '../../../../../../src/ol/layer/WebGLPoints.js';
 import WebGLPointsLayerRenderer from '../../../../../../src/ol/renderer/webgl/PointsLayer.js';
-import {WebGLWorkerMessageType} from '../../../../../../src/ol/renderer/webgl/Layer.js';
+import {WebGLWorkerMessageType} from '../../../../../../src/ol/render/webgl/constants.js';
 import {
   compose as composeTransform,
   create as createTransform,
@@ -31,30 +33,9 @@ const baseFrameState = {
   renderTargets: {},
 };
 
-const simpleVertexShader = `
-  precision mediump float;
-  uniform mat4 u_projectionMatrix;
-  uniform mat4 u_offsetScaleMatrix;
-  attribute vec2 a_position;
-  attribute float a_index;
-
-  void main(void) {
-    mat4 offsetMatrix = u_offsetScaleMatrix;
-    float offsetX = a_index == 0.0 || a_index == 3.0 ? -2.0 : 2.0;
-    float offsetY = a_index == 0.0 || a_index == 1.0 ? -2.0 : 2.0;
-    vec4 offsets = offsetMatrix * vec4(offsetX, offsetY, 0.0, 0.0);
-    gl_Position = u_projectionMatrix * vec4(a_position, 0.0, 1.0) + offsets;
-  }`;
-const simpleFragmentShader = `
-  precision mediump float;
-
-  void main(void) {
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
-  }`;
-
 // these shaders support hit detection
 // they have a built-in size value of 4
-const hitVertexShader = `
+const simpleVertexShader = `
   precision mediump float;
   uniform mat4 u_projectionMatrix;
   uniform mat4 u_offsetScaleMatrix;
@@ -71,12 +52,16 @@ const hitVertexShader = `
     gl_Position = u_projectionMatrix * vec4(a_position, 0.0, 1.0) + offsets;
     v_hitColor = a_hitColor;
   }`;
-const hitFragmentShader = `
+const simpleFragmentShader = `
   precision mediump float;
   varying vec4 v_hitColor;
+  uniform mediump int u_hitDetection;
 
   void main(void) {
-    gl_FragColor = v_hitColor;
+    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    if (u_hitDetection > 0) {
+      gl_FragColor = v_hitColor;
+    }
   }`;
 
 describe('ol/renderer/webgl/PointsLayer', function () {
@@ -118,8 +103,7 @@ describe('ol/renderer/webgl/PointsLayer', function () {
       renderer = new WebGLPointsLayerRenderer(layer, {
         vertexShader: simpleVertexShader,
         fragmentShader: simpleFragmentShader,
-        hitVertexShader: hitVertexShader,
-        hitFragmentShader: hitFragmentShader,
+        hitDetectionEnabled: false,
       });
       frameState = Object.assign({}, baseFrameState, {
         size: [2, 2],
@@ -156,7 +140,7 @@ describe('ol/renderer/webgl/PointsLayer', function () {
       const attributePerVertex = 3;
 
       renderer.worker_.addEventListener('message', function (event) {
-        if (event.data.type !== WebGLWorkerMessageType.GENERATE_BUFFERS) {
+        if (event.data.type !== WebGLWorkerMessageType.GENERATE_POINT_BUFFERS) {
           return;
         }
         expect(renderer.verticesBuffer_.getArray().length).to.eql(
@@ -177,6 +161,12 @@ describe('ol/renderer/webgl/PointsLayer', function () {
     });
 
     it('fills up the hit render buffer with 2 triangles per point', function (done) {
+      renderer.dispose();
+      renderer = new WebGLPointsLayerRenderer(layer, {
+        vertexShader: simpleVertexShader,
+        fragmentShader: simpleFragmentShader,
+        hitDetectionEnabled: true,
+      });
       layer.getSource().addFeature(
         new Feature({
           geometry: new Point([10, 20]),
@@ -192,24 +182,24 @@ describe('ol/renderer/webgl/PointsLayer', function () {
       const attributePerVertex = 8;
 
       renderer.worker_.addEventListener('message', function (event) {
-        if (event.data.type !== WebGLWorkerMessageType.GENERATE_BUFFERS) {
+        if (event.data.type !== WebGLWorkerMessageType.GENERATE_POINT_BUFFERS) {
           return;
         }
-        if (!renderer.hitVerticesBuffer_.getArray()) {
+        if (!renderer.verticesBuffer_.getArray()) {
           return;
         }
-        expect(renderer.hitVerticesBuffer_.getArray().length).to.eql(
+        expect(renderer.verticesBuffer_.getArray().length).to.eql(
           2 * 4 * attributePerVertex
         );
         expect(renderer.indicesBuffer_.getArray().length).to.eql(2 * 6);
 
-        expect(renderer.hitVerticesBuffer_.getArray()[0]).to.eql(10);
-        expect(renderer.hitVerticesBuffer_.getArray()[1]).to.eql(20);
+        expect(renderer.verticesBuffer_.getArray()[0]).to.eql(10);
+        expect(renderer.verticesBuffer_.getArray()[1]).to.eql(20);
         expect(
-          renderer.hitVerticesBuffer_.getArray()[4 * attributePerVertex + 0]
+          renderer.verticesBuffer_.getArray()[4 * attributePerVertex + 0]
         ).to.eql(30);
         expect(
-          renderer.hitVerticesBuffer_.getArray()[4 * attributePerVertex + 1]
+          renderer.verticesBuffer_.getArray()[4 * attributePerVertex + 1]
         ).to.eql(40);
         done();
       });
@@ -231,7 +221,7 @@ describe('ol/renderer/webgl/PointsLayer', function () {
       renderer.prepareFrame(frameState);
 
       renderer.worker_.addEventListener('message', function (event) {
-        if (event.data.type !== WebGLWorkerMessageType.GENERATE_BUFFERS) {
+        if (event.data.type !== WebGLWorkerMessageType.GENERATE_POINT_BUFFERS) {
           return;
         }
         const attributePerVertex = 3;
@@ -320,8 +310,7 @@ describe('ol/renderer/webgl/PointsLayer', function () {
       renderer = new WebGLPointsLayerRenderer(layer, {
         vertexShader: simpleVertexShader,
         fragmentShader: simpleFragmentShader,
-        hitVertexShader: hitVertexShader,
-        hitFragmentShader: hitFragmentShader,
+        hitDetectionEnabled: true,
       });
     });
 
@@ -349,7 +338,7 @@ describe('ol/renderer/webgl/PointsLayer', function () {
 
       renderer.prepareFrame(frameState);
       renderer.worker_.addEventListener('message', function () {
-        if (!renderer.hitRenderInstructions_) {
+        if (!renderer.renderInstructions_) {
           return;
         }
         renderer.prepareFrame(frameState);
@@ -417,7 +406,7 @@ describe('ol/renderer/webgl/PointsLayer', function () {
 
       renderer.prepareFrame(frameState);
       renderer.worker_.addEventListener('message', function () {
-        if (!renderer.hitRenderInstructions_) {
+        if (!renderer.renderInstructions_) {
           return;
         }
         renderer.prepareFrame(frameState);
@@ -627,14 +616,14 @@ describe('ol/renderer/webgl/PointsLayer', function () {
     beforeEach(function () {
       source = new VectorSource({
         features: new GeoJSON().readFeatures({
-          'type': 'FeatureCollection',
-          'features': [
+          type: 'FeatureCollection',
+          features: [
             {
-              'type': 'Feature',
-              'properties': {},
-              'geometry': {
-                'type': 'Point',
-                'coordinates': [13, 52],
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'Point',
+                coordinates: [13, 52],
               },
             },
           ],
@@ -761,21 +750,48 @@ describe('ol/renderer/webgl/PointsLayer', function () {
         });
       });
     });
-    it('is not ready until after second rebuildBuffers_ worker calls completed', function (done) {
-      map.renderSync();
-      map.getView().setCenter([10, 10]);
-      map.renderSync();
-      let changed = 0;
-      layer.on('change', function () {
-        try {
-          expect(layer.getRenderer().ready).to.be(++changed > 2);
-          if (changed === 4) {
-            done();
-          }
-        } catch (e) {
-          done(e);
-        }
+  });
+
+  describe('layer not visible initially', function () {
+    let map, layer;
+    beforeEach(function () {
+      layer = new WebGLPointsLayer({
+        source: new VectorSource(),
+        style: {
+          symbol: {
+            symbolType: 'circle',
+            size: 14,
+            color: 'red',
+          },
+        },
+        maxZoom: 8,
       });
+      const visibleLayer = new TileLayer({
+        source: new OSM(),
+      });
+      map = new Map({
+        pixelRatio: 1,
+        target: createMapDiv(100, 100),
+        layers: [layer, visibleLayer],
+        view: new View({
+          center: [0, 0],
+          zoom: 10,
+        }),
+      });
+    });
+
+    afterEach(function () {
+      disposeMap(map);
+      layer.dispose();
+    });
+
+    it('loadstart and loadend events trigger normally', function (done) {
+      map.once('loadstart', () => {
+        map.once('loadend', () => {
+          done();
+        });
+      });
+      map.renderSync();
     });
   });
 

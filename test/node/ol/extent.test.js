@@ -781,6 +781,27 @@ describe('ol/extent.js', function () {
   });
 
   describe('#applyTransform()', function () {
+    it('returns empty for empty extents', function () {
+      const transformFn = getTransform('EPSG:4326', 'EPSG:3857');
+      const emptyExtent = _ol_extent_.createEmpty();
+      const destEmpty = _ol_extent_.applyTransform(emptyExtent, transformFn);
+      expect(destEmpty).to.eql(emptyExtent);
+
+      const extentDeltaXNeg = [45, 67, 44, 78];
+      const destDeltaXNeg = _ol_extent_.applyTransform(
+        extentDeltaXNeg,
+        transformFn
+      );
+      expect(destDeltaXNeg).to.eql(emptyExtent);
+
+      const extentDeltaYNeg = [11, 67, 44, 66];
+      const destDeltaYNeg = _ol_extent_.applyTransform(
+        extentDeltaYNeg,
+        transformFn
+      );
+      expect(destDeltaYNeg).to.eql(emptyExtent);
+    });
+
     it('does transform', function () {
       const transformFn = getTransform('EPSG:4326', 'EPSG:3857');
       const sourceExtent = [-15, -30, 45, 60];
@@ -795,6 +816,21 @@ describe('ol/extent.js', function () {
       expect(destinationExtent[2]).to.roughlyEqual(5009377.085697311, 1e-9);
       expect(destinationExtent[1]).to.roughlyEqual(-3503549.843504376, 1e-8);
       expect(destinationExtent[3]).to.roughlyEqual(8399737.889818361, 1e-8);
+    });
+
+    it('does not treat a single point as empty', function () {
+      const transformFn = getTransform('EPSG:4326', 'EPSG:3857');
+      const sourceExtent = _ol_extent_.boundingExtent([[45, 60]]);
+      const destinationExtent = _ol_extent_.applyTransform(
+        sourceExtent,
+        transformFn
+      );
+      expect(destinationExtent).not.to.be(undefined);
+      expect(destinationExtent).not.to.be(null);
+      expect(destinationExtent[0]).to.roughlyEqual(5009377.085697311, 1e-9);
+      expect(destinationExtent[2]).to.eql(destinationExtent[0]);
+      expect(destinationExtent[1]).to.roughlyEqual(8399737.889818361, 1e-8);
+      expect(destinationExtent[3]).to.eql(destinationExtent[1]);
     });
 
     it('takes arbitrary function', function () {
@@ -962,6 +998,54 @@ describe('ol/extent.js', function () {
           0.1
         )
       ).to.be(false);
+    });
+  });
+
+  describe('wrapAndSliceX', function () {
+    const projection = get('EPSG:4326');
+
+    it('leaves real world extent untouched', function () {
+      expect(_ol_extent_.wrapAndSliceX([16, 48, 18, 49], projection)).to.eql([
+        [16, 48, 18, 49],
+      ]);
+    });
+
+    it('slices +180 crossing extents', function () {
+      expect(_ol_extent_.wrapAndSliceX([164, 48, 198, 49], projection)).to.eql([
+        [164, 48, 180, 49],
+        [-180, 48, -162, 49],
+      ]);
+
+      expect(_ol_extent_.wrapAndSliceX([178, 48, 198, 49], projection)).to.eql([
+        [178, 48, 180, 49],
+        [-180, 48, -162, 49],
+      ]);
+    });
+
+    it('slices -180 crossing extents', function () {
+      expect(
+        _ol_extent_.wrapAndSliceX([-198, 48, -160, 49], projection)
+      ).to.eql([
+        [162, 48, 180, 49],
+        [-180, 48, -160, 49],
+      ]);
+
+      expect(
+        _ol_extent_.wrapAndSliceX([-202, 48, -160, 49], projection)
+      ).to.eql([
+        [158, 48, 180, 49],
+        [-180, 48, -160, 49],
+      ]);
+    });
+
+    it('fits infinite extents to the projection extent', function () {
+      expect(
+        _ol_extent_.wrapAndSliceX([-Infinity, 48, -160, 49], projection)
+      ).to.eql([[-180, 48, 180, 49]]);
+
+      expect(
+        _ol_extent_.wrapAndSliceX([-198, 48, Infinity, 49], projection)
+      ).to.eql([[-180, 48, 180, 49]]);
     });
   });
 });

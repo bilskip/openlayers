@@ -1,11 +1,15 @@
 import DataTileSource from '../../../../../src/ol/source/DataTile.js';
 import Map from '../../../../../src/ol/Map.js';
+import OSM from '../../../../../src/ol/source/OSM.js';
+import TileWMS from '../../../../../src/ol/source/TileWMS.js';
 import View from '../../../../../src/ol/View.js';
 import WebGLHelper from '../../../../../src/ol/webgl/Helper.js';
 import WebGLTileLayer from '../../../../../src/ol/layer/WebGLTile.js';
 import {createCanvasContext2D} from '../../../../../src/ol/dom.js';
+import {createXYZ} from '../../../../../src/ol/tilegrid.js';
 import {getForViewAndSize} from '../../../../../src/ol/extent.js';
 import {getRenderPixel} from '../../../../../src/ol/render.js';
+import {sourcesFromTileGrid} from '../../../../../src/ol/source.js';
 
 describe('ol/layer/WebGLTile', function () {
   /** @type {WebGLTileLayer} */
@@ -19,7 +23,7 @@ describe('ol/layer/WebGLTile', function () {
       source: new DataTileSource({
         loader(z, x, y) {
           return new Promise((resolve) => {
-            resolve(new ImageData(256, 256));
+            resolve(new ImageData(256, 256).data);
           });
         },
       }),
@@ -80,7 +84,8 @@ describe('ol/layer/WebGLTile', function () {
     it('retrieves pixel data', (done) => {
       const layer = new WebGLTileLayer({
         source: new DataTileSource({
-          tilePixelRatio: 1 / 256,
+          tileSize: 1,
+          tileGrid: createXYZ(),
           loader(z, x, y) {
             return new Uint8Array([5, 4, 3, 2, 1]);
           },
@@ -102,10 +107,67 @@ describe('ol/layer/WebGLTile', function () {
       });
     });
 
+    it('retrieves pixel data from pyramid', (done) => {
+      const pyramidGrid = createXYZ({minZoom: 1, maxZoom: 1});
+      const layer = new WebGLTileLayer({
+        sources: sourcesFromTileGrid(
+          pyramidGrid,
+          ([z1, x1, y1]) =>
+            new DataTileSource({
+              tileSize: 1,
+              tileGrid: createXYZ({
+                extent: pyramidGrid.getTileCoordExtent([z1, x1, y1]),
+                minZoom: 1,
+                maxZoom: 1,
+              }),
+              loader(z2, x2, y2) {
+                return new Uint8Array([x1, y1, x2, y2]);
+              },
+            })
+        ),
+      });
+
+      map.addLayer(layer);
+
+      map.once('rendercomplete', () => {
+        let data;
+        data = layer.getData([25, 25]);
+        expect(data).to.be.a(Uint8Array);
+        expect(data.length).to.be(4);
+        expect(data[0]).to.be(0);
+        expect(data[1]).to.be(0);
+        expect(data[2]).to.be(1);
+        expect(data[3]).to.be(1);
+        data = layer.getData([75, 25]);
+        expect(data).to.be.a(Uint8Array);
+        expect(data.length).to.be(4);
+        expect(data[0]).to.be(1);
+        expect(data[1]).to.be(0);
+        expect(data[2]).to.be(0);
+        expect(data[3]).to.be(1);
+        data = layer.getData([25, 75]);
+        expect(data).to.be.a(Uint8Array);
+        expect(data.length).to.be(4);
+        expect(data[0]).to.be(0);
+        expect(data[1]).to.be(1);
+        expect(data[2]).to.be(1);
+        expect(data[3]).to.be(0);
+        data = layer.getData([75, 75]);
+        expect(data).to.be.a(Uint8Array);
+        expect(data.length).to.be(4);
+        expect(data[0]).to.be(1);
+        expect(data[1]).to.be(1);
+        expect(data[2]).to.be(0);
+        expect(data[3]).to.be(0);
+        done();
+      });
+    });
+
     it('preserves the original data type', (done) => {
       const layer = new WebGLTileLayer({
         source: new DataTileSource({
-          tilePixelRatio: 1 / 256,
+          tileSize: 1,
+          tileGrid: createXYZ(),
           loader(z, x, y) {
             return new Float32Array([1.11, 2.22, 3.33, 4.44, 5.55]);
           },
@@ -128,12 +190,96 @@ describe('ol/layer/WebGLTile', function () {
     });
   });
 
+  describe('gutter', () => {
+    let map, target, layer, data;
+    beforeEach((done) => {
+      target = document.createElement('div');
+      target.style.width = '256px';
+      target.style.height = '256px';
+      document.body.appendChild(target);
+
+      layer = new WebGLTileLayer({
+        source: new TileWMS({
+          params: {
+            LAYERS: 'layer',
+          },
+          gutter: 20,
+          url: 'spec/ol/data/wms20.png',
+        }),
+      });
+
+      map = new Map({
+        target: target,
+        pixelRatio: 1,
+        layers: [layer],
+        view: new View({
+          center: [0, 0],
+          zoom: 0,
+        }),
+      });
+
+      map.once('rendercomplete', () => done());
+    });
+
+    afterEach(() => {
+      map.setTarget(null);
+      document.body.removeChild(target);
+    });
+
+    it('gets pixel data', () => {
+      data = layer.getData([76, 114]);
+      expect(data).to.be.a(Uint8ClampedArray);
+      expect(data.length).to.be(4);
+      expect(data[0]).to.be(77);
+      expect(data[1]).to.be(255);
+      expect(data[2]).to.be(77);
+      expect(data[3]).to.be(179);
+
+      data = layer.getData([76, 118]);
+      expect(data).to.be.a(Uint8ClampedArray);
+      expect(data.length).to.be(4);
+      expect(data[0]).to.be(255);
+      expect(data[1]).to.be(77);
+      expect(data[2]).to.be(77);
+      expect(data[3]).to.be(179);
+
+      data = layer.getData([80, 114]);
+      expect(data).to.be.a(Uint8ClampedArray);
+      expect(data.length).to.be(4);
+      expect(data[0]).to.be(255);
+      expect(data[1]).to.be(77);
+      expect(data[2]).to.be(77);
+      expect(data[3]).to.be(179);
+
+      data = layer.getData([80, 118]);
+      expect(data).to.be.a(Uint8ClampedArray);
+      expect(data.length).to.be(4);
+      expect(data[0]).to.be(77);
+      expect(data[1]).to.be(255);
+      expect(data[2]).to.be(77);
+      expect(data[3]).to.be(179);
+    });
+  });
+
   describe('dispose()', () => {
     it('calls dispose on the renderer', () => {
       const renderer = layer.getRenderer();
       const spy = sinon.spy(renderer, 'dispose');
       layer.dispose();
       expect(spy.called).to.be(true);
+    });
+  });
+
+  describe('caching', () => {
+    it('updates the size of the tile cache on the source ', (done) => {
+      const source = new OSM();
+      const spy = sinon.spy(source, 'updateCacheSize');
+      const layer = new WebGLTileLayer({source: source});
+      map.addLayer(layer);
+      map.once('rendercomplete', () => {
+        expect(spy.called).to.be(true);
+        done();
+      });
     });
   });
 
@@ -203,15 +349,15 @@ describe('ol/layer/WebGLTile', function () {
       attribute vec2 a_textureCoord;
 
       uniform mat4 u_tileTransform;
-      uniform float u_texturePixelWidth; 
-      uniform float u_texturePixelHeight; 
-      uniform float u_textureResolution; 
-      uniform float u_textureOriginX; 
-      uniform float u_textureOriginY; 
+      uniform float u_texturePixelWidth;
+      uniform float u_texturePixelHeight;
+      uniform float u_textureResolution;
+      uniform float u_textureOriginX;
+      uniform float u_textureOriginY;
       uniform float u_depth;
 
       varying vec2 v_textureCoord;
-      varying vec2 v_mapCoord; 
+      varying vec2 v_mapCoord;
 
       void main() {
         v_textureCoord = a_textureCoord;
@@ -344,7 +490,7 @@ describe('ol/layer/WebGLTile', function () {
         source: new DataTileSource({
           loader(z, x, y) {
             return new Promise((resolve) => {
-              resolve(new ImageData(256, 256));
+              resolve(new ImageData(256, 256).data);
             });
           },
         }),
@@ -359,7 +505,7 @@ describe('ol/layer/WebGLTile', function () {
         source: new DataTileSource({
           loader(z, x, y) {
             return new Promise((resolve) => {
-              resolve(new ImageData(256, 256));
+              resolve(new ImageData(256, 256).data);
             });
           },
         }),
@@ -375,7 +521,7 @@ describe('ol/layer/WebGLTile', function () {
         source: new DataTileSource({
           loader(z, x, y) {
             return new Promise((resolve) => {
-              resolve(new ImageData(256, 256));
+              resolve(new ImageData(256, 256).data);
             });
           },
         }),
@@ -410,6 +556,31 @@ describe('ol/layer/WebGLTile', function () {
         ]);
         done();
       });
+    });
+  });
+
+  describe('multiple sources', () => {
+    it('can determine the correct band count for static sources array', () => {
+      const layer = new WebGLTileLayer({
+        sources: [
+          new DataTileSource({
+            bandCount: 7,
+          }),
+        ],
+      });
+      expect(layer.getSourceBandCount_()).to.be(7);
+    });
+    it('can determine the correct band count for sources function', () => {
+      const layer = new WebGLTileLayer({
+        sources: sourcesFromTileGrid(
+          createXYZ(),
+          ([z, x, y]) =>
+            new DataTileSource({
+              bandCount: 7,
+            })
+        ),
+      });
+      expect(layer.getSourceBandCount_()).to.be(7);
     });
   });
 
@@ -514,7 +685,7 @@ describe('ol/layer/WebGLTile', function () {
     sourceless.setSource(
       new DataTileSource({
         loader(z, x, y) {
-          return new ImageData(256, 256);
+          return new ImageData(256, 256).data;
         },
       })
     );

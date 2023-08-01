@@ -9,10 +9,11 @@ import WebGLPointsLayer from '../src/ol/layer/WebGLPoints.js';
 const vectorSource = new Vector({
   url: 'data/geojson/world-cities.geojson',
   format: new GeoJSON(),
+  wrapX: true,
 });
 
 const predefinedStyles = {
-  'icons': {
+  icons: {
     symbol: {
       symbolType: 'image',
       src: 'data/icon.png',
@@ -22,7 +23,7 @@ const predefinedStyles = {
       offset: [0, 9],
     },
   },
-  'triangles': {
+  triangles: {
     symbol: {
       symbolType: 'triangle',
       size: 18,
@@ -67,7 +68,7 @@ const predefinedStyles = {
       opacity: 0.95,
     },
   },
-  'circles': {
+  circles: {
     symbol: {
       symbolType: 'circle',
       size: [
@@ -79,7 +80,7 @@ const predefinedStyles = {
         2000000,
         28,
       ],
-      color: '#006688',
+      color: ['match', ['get', 'hover'], 1, '#ff3f3f', '#006688'],
       rotateWithView: false,
       offset: [0, 0],
       opacity: [
@@ -96,8 +97,18 @@ const predefinedStyles = {
   'circles-zoom': {
     symbol: {
       symbolType: 'circle',
-      size: ['interpolate', ['exponential', 2.5], ['zoom'], 2, 1, 14, 32],
-      color: '#240572',
+      // by using an exponential interpolation with a base of 2 we can make it so that circles will have a fixed size
+      // in world coordinates between zoom level 5 and 15
+      size: [
+        'interpolate',
+        ['exponential', 2],
+        ['zoom'],
+        5,
+        3,
+        15,
+        3 * Math.pow(2, 10),
+      ],
+      color: ['match', ['get', 'hover'], 1, '#ff3f3f', '#006688'],
       offset: [0, 0],
       opacity: 0.95,
     },
@@ -160,12 +171,27 @@ const map = new Map({
 
 let literalStyle;
 let pointsLayer;
+
+let selected = null;
+
+map.on('pointermove', function (ev) {
+  if (selected !== null) {
+    selected.set('hover', 0);
+    selected = null;
+  }
+
+  map.forEachFeatureAtPixel(ev.pixel, function (feature) {
+    feature.set('hover', 1);
+    selected = feature;
+    return true;
+  });
+});
+
 function refreshLayer(newStyle) {
   const previousLayer = pointsLayer;
   pointsLayer = new WebGLPointsLayer({
     source: vectorSource,
     style: newStyle,
-    disableHitDetection: true,
   });
   map.addLayer(pointsLayer);
 

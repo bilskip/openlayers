@@ -4,8 +4,7 @@ import Fill from '../../../../../src/ol/style/Fill.js';
 import GeoJSON from '../../../../../src/ol/format/GeoJSON.js';
 import GeometryCollection from '../../../../../src/ol/geom/GeometryCollection.js';
 import Icon from '../../../../../src/ol/style/Icon.js';
-import IconAnchorUnits from '../../../../../src/ol/style/IconAnchorUnits.js';
-import IconOrigin from '../../../../../src/ol/style/IconOrigin.js';
+import ImageState from '../../../../../src/ol/ImageState.js';
 import KML, {
   getDefaultFillStyle,
   getDefaultImageStyle,
@@ -32,7 +31,6 @@ import {
   get as getProjection,
   transform,
 } from '../../../../../src/ol/proj.js';
-import {find} from '../../../../../src/ol/array.js';
 import {parse} from '../../../../../src/ol/xml.js';
 import {remove as removeTransform} from '../../../../../src/ol/proj/transforms.js';
 
@@ -2323,7 +2321,7 @@ describe('ol.format.KML', function () {
           expect(f).to.be.an(Feature);
           const styleFunction = f.getStyleFunction();
           expect(styleFunction).not.to.be(undefined);
-          const styleArray = styleFunction(f, 0);
+          const styleArray = /** @type {Array<Style>} */ (styleFunction(f, 0));
           expect(styleArray).to.be.an(Array);
           expect(styleArray).to.have.length(1);
           const style = styleArray[0];
@@ -2342,11 +2340,13 @@ describe('ol.format.KML', function () {
           expect(style.getText()).to.be(getDefaultTextStyle());
           expect(style.getZIndex()).to.be(undefined);
 
-          setTimeout(function () {
-            expect(imageStyle.getSize()).to.eql([20, 20]);
-            expect(imageStyle.getScale()).to.be(1.6); // 32 / 20
-            done();
-          }, 200);
+          imageStyle.listenImageChange(function (evt) {
+            if (imageStyle.getImageState() === ImageState.LOADED) {
+              expect(imageStyle.getSize()).to.eql([20, 20]);
+              expect(imageStyle.getScale()).to.be(1.6); // 32 / 20
+              done();
+            }
+          });
         });
 
         it("can read a IconStyle's hotspot", function () {
@@ -2427,25 +2427,25 @@ describe('ol.format.KML', function () {
             if (f.getId() == 1) {
               expect(imageStyle.anchor_[0]).to.be(0.5);
               expect(imageStyle.anchor_[1]).to.be(0.5);
-              expect(imageStyle.anchorOrigin_).to.be(IconOrigin.BOTTOM_LEFT);
-              expect(imageStyle.anchorXUnits_).to.be(IconAnchorUnits.FRACTION);
-              expect(imageStyle.anchorYUnits_).to.be(IconAnchorUnits.FRACTION);
+              expect(imageStyle.anchorOrigin_).to.be('bottom-left');
+              expect(imageStyle.anchorXUnits_).to.be('fraction');
+              expect(imageStyle.anchorYUnits_).to.be('fraction');
             } else {
               expect(imageStyle.anchor_[0]).to.be(5);
               expect(imageStyle.anchor_[1]).to.be(5);
-              expect(imageStyle.anchorXUnits_).to.be(IconAnchorUnits.PIXELS);
-              expect(imageStyle.anchorYUnits_).to.be(IconAnchorUnits.PIXELS);
+              expect(imageStyle.anchorXUnits_).to.be('pixels');
+              expect(imageStyle.anchorYUnits_).to.be('pixels');
               if (f.getId() == 2) {
-                expect(imageStyle.anchorOrigin_).to.be(IconOrigin.BOTTOM_LEFT);
+                expect(imageStyle.anchorOrigin_).to.be('bottom-left');
               }
               if (f.getId() == 3) {
-                expect(imageStyle.anchorOrigin_).to.be(IconOrigin.BOTTOM_RIGHT);
+                expect(imageStyle.anchorOrigin_).to.be('bottom-right');
               }
               if (f.getId() == 4) {
-                expect(imageStyle.anchorOrigin_).to.be(IconOrigin.TOP_LEFT);
+                expect(imageStyle.anchorOrigin_).to.be('top-left');
               }
               if (f.getId() == 5) {
-                expect(imageStyle.anchorOrigin_).to.be(IconOrigin.TOP_RIGHT);
+                expect(imageStyle.anchorOrigin_).to.be('top-right');
               }
             }
             expect(imageStyle.getRotation()).to.eql(0);
@@ -4255,7 +4255,7 @@ describe('ol.format.KML', function () {
       });
 
       it('creates a Point and a MultiPolygon for Alaska', function () {
-        const alaska = find(features, function (feature) {
+        const alaska = features.find(function (feature) {
           return feature.get('name') === 'Alaska';
         });
         expect(alaska).to.be.an(Feature);
@@ -4508,6 +4508,58 @@ describe('ol.format.KML', function () {
         expect(nl[0].maxFadeExtent).to.be(0);
         expect(nl[1].extent).to.eql([0, 0, 180, 90]);
       });
+    });
+  });
+
+  describe('#readCamera', function () {
+    it('returns an array of cameras', function () {
+      const text =
+        '<kml xmlns="http://www.opengis.net/kml/2.2">' +
+        '  <Document>' +
+        '    <Camera>' +
+        '      <Latitude>11</Latitude>' +
+        '      <Longitude>46</Longitude>' +
+        '      <Altitude>4000</Altitude>' +
+        '      <AltitudeMode>clampToGround</AltitudeMode>' +
+        '      <Heading>18.0</Heading>' +
+        '      <Tilt>85</Tilt>' +
+        '      <Roll>0</Roll>' +
+        '    </Camera>' +
+        '  </Document>' +
+        '  <Placemark>' +
+        '    <Point>' +
+        '      <coordinates>' +
+        '        8.167492844000884,46.88946232784758' +
+        '      </coordinates>' +
+        '    </Point>' +
+        '    <Camera>' +
+        '      <Latitude>22</Latitude>' +
+        '      <Longitude>10</Longitude>' +
+        '      <Altitude>40</Altitude>' +
+        '      <AltitudeMode>clampToGround</AltitudeMode>' +
+        '      <Heading>75</Heading>' +
+        '      <Tilt>30</Tilt>' +
+        '      <Roll>80</Roll>' +
+        '    </Camera>' +
+        '  </Placemark>' +
+        '</kml>';
+
+      const nl = format.readCamera(text);
+      expect(nl).to.have.length(2);
+      expect(nl[0].Latitude).to.be(11);
+      expect(nl[0].Longitude).to.be(46);
+      expect(nl[0].Altitude).to.be(4000);
+      expect(nl[0].Heading).to.be(18.0);
+      expect(nl[0].Tilt).to.be(85);
+      expect(nl[0].Roll).to.be(0);
+      expect(nl[0].AltitudeMode).to.be('clampToGround');
+      expect(nl[1].Latitude).to.be(22);
+      expect(nl[1].Longitude).to.be(10);
+      expect(nl[1].Altitude).to.be(40);
+      expect(nl[1].Heading).to.be(75);
+      expect(nl[1].Tilt).to.be(30);
+      expect(nl[1].Roll).to.be(80);
+      expect(nl[1].AltitudeMode).to.be('clampToGround');
     });
   });
 });

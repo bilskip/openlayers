@@ -2,6 +2,7 @@ import DataTile from '../../../../src/ol/source/DataTile.js';
 import Map from '../../../../src/ol/Map.js';
 import TileLayer from '../../../../src/ol/layer/WebGLTile.js';
 import View from '../../../../src/ol/View.js';
+import {createXYZ} from '../../../../src/ol/tilegrid.js';
 
 const size = 512;
 
@@ -17,9 +18,10 @@ new Map({
   layers: [
     new TileLayer({
       source: new DataTile({
+        tileSize: size,
+        tileGrid: createXYZ({maxZoom: 0}),
         maxZoom: 0,
         loader: () => data,
-        tilePixelRatio: 2,
       }),
     }),
   ],

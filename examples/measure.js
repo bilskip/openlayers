@@ -17,21 +17,13 @@ const source = new VectorSource();
 
 const vector = new VectorLayer({
   source: source,
-  style: new Style({
-    fill: new Fill({
-      color: 'rgba(255, 255, 255, 0.2)',
-    }),
-    stroke: new Stroke({
-      color: '#ffcc33',
-      width: 2,
-    }),
-    image: new CircleStyle({
-      radius: 7,
-      fill: new Fill({
-        color: '#ffcc33',
-      }),
-    }),
-  }),
+  style: {
+    'fill-color': 'rgba(255, 255, 255, 0.2)',
+    'stroke-color': '#ffcc33',
+    'stroke-width': 2,
+    'circle-radius': 7,
+    'circle-fill-color': '#ffcc33',
+  },
 });
 
 /**
@@ -153,30 +145,37 @@ const formatArea = function (polygon) {
   return output;
 };
 
+const style = new Style({
+  fill: new Fill({
+    color: 'rgba(255, 255, 255, 0.2)',
+  }),
+  stroke: new Stroke({
+    color: 'rgba(0, 0, 0, 0.5)',
+    lineDash: [10, 10],
+    width: 2,
+  }),
+  image: new CircleStyle({
+    radius: 5,
+    stroke: new Stroke({
+      color: 'rgba(0, 0, 0, 0.7)',
+    }),
+    fill: new Fill({
+      color: 'rgba(255, 255, 255, 0.2)',
+    }),
+  }),
+});
+
 function addInteraction() {
   const type = typeSelect.value == 'area' ? 'Polygon' : 'LineString';
   draw = new Draw({
     source: source,
     type: type,
-    style: new Style({
-      fill: new Fill({
-        color: 'rgba(255, 255, 255, 0.2)',
-      }),
-      stroke: new Stroke({
-        color: 'rgba(0, 0, 0, 0.5)',
-        lineDash: [10, 10],
-        width: 2,
-      }),
-      image: new CircleStyle({
-        radius: 5,
-        stroke: new Stroke({
-          color: 'rgba(0, 0, 0, 0.7)',
-        }),
-        fill: new Fill({
-          color: 'rgba(255, 255, 255, 0.2)',
-        }),
-      }),
-    }),
+    style: function (feature) {
+      const geometryType = feature.getGeometry().getType();
+      if (geometryType === type || geometryType === 'Point') {
+        return style;
+      }
+    },
   });
   map.addInteraction(draw);
 

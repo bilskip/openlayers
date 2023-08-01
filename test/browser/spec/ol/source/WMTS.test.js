@@ -240,11 +240,6 @@ describe('ol/source/WMTS', function () {
       const source = new WMTS({interpolate: false});
       expect(source.getInterpolate()).to.be(false);
     });
-
-    it('is false if constructed with imageSmoothing: false', function () {
-      const source = new WMTS({imageSmoothing: false});
-      expect(source.getInterpolate()).to.be(false);
-    });
   });
 
   describe('when creating tileUrlFunction', function () {
@@ -320,6 +315,9 @@ describe('ol/source/WMTS', function () {
         projection
       );
       expect(url).to.be.eql('http://host/layer/default/42/EPSG:3857/1/1/1.jpg');
+      expect(source.getKey()).to.be.eql(
+        'http://host/{Layer}/{Style}/{Time}/{tilematrixset}/{TileMatrix}/{TileCol}/{TileRow}.jpg/Time-42'
+      );
     });
   });
 
@@ -475,6 +473,34 @@ describe('ol/source/WMTS', function () {
       expectDelta(extent[3], expectedMatrixSetExtend[3]);
     });
   });
+
+  describe('when creating options from epsg:4326 capabilities with BoundingBox', function () {
+    const parser = new WMTSCapabilities();
+    let capabilities;
+    before(function (done) {
+      afterLoadText(
+        'spec/ol/format/wmts/capabilities_epsg4326_with_boundingbox.xml',
+        function (xml) {
+          try {
+            capabilities = parser.read(xml);
+          } catch (e) {
+            done(e);
+          }
+          done();
+        }
+      );
+    });
+
+    it('returns correct bounding box when the layer has BoundingBox', function () {
+      const options = optionsFromCapabilities(capabilities, {
+        layer: 's2cloudless-2020',
+      });
+
+      const extent = options.tileGrid.getExtent();
+      expect(extent).to.eql([-180, -90, 180, 90]);
+    });
+  });
+
   describe('set wrap x by bounding box if available', function () {
     const parser = new WMTSCapabilities();
     let capabilities;

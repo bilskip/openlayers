@@ -5,9 +5,9 @@ import TileQueue, {
 import VectorTileLayer from '../src/ol/layer/VectorTile.js';
 import VectorTileSource from '../src/ol/source/VectorTile.js';
 import stringify from 'json-stringify-safe';
-import styleFunction from 'ol-mapbox-style/dist/stylefunction.js';
 import {get} from '../src/ol/proj.js';
 import {inView} from '../src/ol/layer/Layer.js';
+import {stylefunction} from 'ol-mapbox-style';
 
 /** @type {any} */
 const worker = self;
@@ -30,7 +30,7 @@ const sources = {
     format: new MVT(),
     url: 'https://api.maptiler.com/tiles/contours/{z}/{x}/{y}.pbf?key=get_your_own_D6rA4zTHduk6KOKTXzGB',
   }),
-  openmaptiles: new VectorTileSource({
+  maptiler_planet: new VectorTileSource({
     format: new MVT(),
     maxZoom: 14,
     url: 'https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=get_your_own_D6rA4zTHduk6KOKTXzGB',
@@ -45,7 +45,7 @@ function getFont(font) {
 
 function loadStyles() {
   const styleUrl =
-    'https://api.maptiler.com/maps/topo/style.json?key=get_your_own_D6rA4zTHduk6KOKTXzGB';
+    'https://api.maptiler.com/maps/topo-v2/style.json?key=get_your_own_D6rA4zTHduk6KOKTXzGB';
 
   fetch(styleUrl)
     .then((data) => data.json())
@@ -95,7 +95,7 @@ function loadStyles() {
               };
               rendererTransform = transform;
             };
-            styleFunction(
+            stylefunction(
               layer,
               styleJson,
               bucket.layers,

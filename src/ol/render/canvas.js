@@ -2,11 +2,14 @@
  * @module ol/render/canvas
  */
 import BaseObject from '../Object.js';
-import EventTarget from '../events/Target.js';
 import {WORKER_OFFSCREEN_CANVAS} from '../has.js';
 import {clear} from '../obj.js';
 import {createCanvasContext2D} from '../dom.js';
 import {getFontParameters} from '../css.js';
+
+/**
+ * @typedef {'Circle' | 'Image' | 'LineString' | 'Polygon' | 'Text' | 'Default'} BuilderType
+ */
 
 /**
  * @typedef {Object} FillState
@@ -55,9 +58,11 @@ import {getFontParameters} from '../css.js';
 /**
  * @typedef {Object} TextState
  * @property {string} font Font.
- * @property {string} [textAlign] TextAlign.
- * @property {string} textBaseline TextBaseline.
- * @property {string} [placement] Placement.
+ * @property {CanvasTextAlign} [textAlign] TextAlign.
+ * @property {number} [repeat] Repeat.
+ * @property {import("../style/Text.js").TextJustify} [justify] Justify.
+ * @property {CanvasTextBaseline} textBaseline TextBaseline.
+ * @property {import("../style/Text.js").TextPlacement} [placement] Placement.
  * @property {number} [maxAngle] MaxAngle.
  * @property {boolean} [overflow] Overflow.
  * @property {import("../style/Fill.js").default} [backgroundFill] BackgroundFill.
@@ -130,13 +135,13 @@ export const defaultStrokeStyle = '#000';
 
 /**
  * @const
- * @type {string}
+ * @type {CanvasTextAlign}
  */
 export const defaultTextAlign = 'center';
 
 /**
  * @const
- * @type {string}
+ * @type {CanvasTextBaseline}
  */
 export const defaultTextBaseline = 'middle';
 
@@ -156,19 +161,6 @@ export const defaultLineWidth = 1;
  * @type {BaseObject}
  */
 export const checkedFonts = new BaseObject();
-
-/**
- * The label cache for text rendering. To change the default cache size of 2048
- * entries, use {@link module:ol/structs/LRUCache~LRUCache#setSize cache.setSize()}.
- * Deprecated - there is no label cache any more.
- * @type {?}
- * @api
- * @deprecated
- */
-export const labelCache = new EventTarget();
-labelCache.setSize = function () {
-  console.warn('labelCache is deprecated.'); //eslint-disable-line
-};
 
 /**
  * @type {CanvasRenderingContext2D}
@@ -361,7 +353,9 @@ export function measureAndCacheTextWidth(font, text, cache) {
   if (text in cache) {
     return cache[text];
   }
-  const width = measureTextWidth(font, text);
+  const width = text
+    .split('\n')
+    .reduce((prev, curr) => Math.max(prev, measureTextWidth(font, curr)), 0);
   cache[text] = width;
   return width;
 }

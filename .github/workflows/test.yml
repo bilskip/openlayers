@@ -11,6 +11,9 @@ on:
 env:
   CI: true
 
+permissions:
+  contents: read
+
 jobs:
   pretest:
     name: Pre-Test
@@ -21,10 +24,10 @@ jobs:
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set Node.js Version
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
 
@@ -43,10 +46,10 @@ jobs:
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set Node.js Version
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
 
@@ -65,10 +68,10 @@ jobs:
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set Node.js Version
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
 
@@ -87,10 +90,10 @@ jobs:
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set Node.js Version
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
 
@@ -100,8 +103,8 @@ jobs:
       - name: Build the Package
         run: npm run build-package
 
-      - name: Generate the Legacy Build
-        run: "npm run build-legacy && npx eslint --rule 'import/no-duplicates: off' --fix build/index.js"
+      - name: Generate the Full Build
+        run: "npm run build-full"
 
   rendering:
     name: Rendering
@@ -112,10 +115,10 @@ jobs:
 
     steps:
       - name: Clone Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set Node.js Version
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
 
@@ -127,7 +130,7 @@ jobs:
 
       - name: Store Rendering Test Artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: rendering-tests
           path: test/rendering/cases/**/actual.png

@@ -40,10 +40,10 @@ export const BufferUsage = {
 class WebGLArrayBuffer {
   /**
    * @param {number} type Buffer type, either ARRAY_BUFFER or ELEMENT_ARRAY_BUFFER.
-   * @param {number} [opt_usage] Intended usage, either `STATIC_DRAW`, `STREAM_DRAW` or `DYNAMIC_DRAW`.
+   * @param {number} [usage] Intended usage, either `STATIC_DRAW`, `STREAM_DRAW` or `DYNAMIC_DRAW`.
    * Default is `DYNAMIC_DRAW`.
    */
-  constructor(type, opt_usage) {
+  constructor(type, usage) {
     /**
      * @private
      * @type {Float32Array|Uint32Array}
@@ -62,35 +62,38 @@ class WebGLArrayBuffer {
      * @private
      * @type {number}
      */
-    this.usage = opt_usage !== undefined ? opt_usage : BufferUsage.STATIC_DRAW;
+    this.usage = usage !== undefined ? usage : BufferUsage.STATIC_DRAW;
   }
 
   /**
    * Populates the buffer with an array of the given size (all values will be zeroes).
    * @param {number} size Array size
+   * @return {WebGLArrayBuffer} This
    */
   ofSize(size) {
     this.array = new (getArrayClassForType(this.type))(size);
+    return this;
   }
 
   /**
-   * Populates the buffer with an array of the given size (all values will be zeroes).
+   * Populates the buffer with an array of the given size.
    * @param {Array<number>} array Numerical array
+   * @return {WebGLArrayBuffer} This
    */
   fromArray(array) {
-    const arrayClass = getArrayClassForType(this.type);
-    this.array = arrayClass.from
-      ? arrayClass.from(array)
-      : new arrayClass(array);
+    this.array = getArrayClassForType(this.type).from(array);
+    return this;
   }
 
   /**
    * Populates the buffer with a raw binary array buffer.
    * @param {ArrayBuffer} buffer Raw binary buffer to populate the array with. Note that this buffer must have been
    * initialized for the same typed array class.
+   * @return {WebGLArrayBuffer} This
    */
   fromArrayBuffer(buffer) {
     this.array = new (getArrayClassForType(this.type))(buffer);
+    return this;
   }
 
   /**
