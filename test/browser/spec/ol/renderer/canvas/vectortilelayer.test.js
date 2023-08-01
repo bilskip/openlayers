@@ -123,7 +123,7 @@ describe('ol/renderer/canvas/VectorTileLayer', function () {
 
     it('does not render replays for pure image rendering', function () {
       const testLayer = new VectorTileLayer({
-        renderMode: VectorTileRenderType.IMAGE,
+        renderMode: 'image',
         source: source,
         style: layerStyle,
       });
