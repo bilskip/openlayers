@@ -1,12 +1,12 @@
 /**
  * @module ol/layer/VectorTile
  */
-import BaseVectorLayer from './BaseVector.js';
-import CanvasVectorTileLayerRenderer from '../renderer/canvas/VectorTileLayer.js';
-import TileProperty from './TileProperty.js';
-import VectorTileRenderType from './VectorTileRenderType.js';
-import {assert} from '../asserts.js';
-import {assign} from '../obj.js';
+import BaseVectorLayer from "./BaseVector.js";
+import CanvasVectorTileLayerRenderer from "../renderer/canvas/VectorTileLayer.js";
+import TileProperty from "./TileProperty.js";
+import VectorTileRenderType from "./VectorTileRenderType.js";
+import { assert } from "../asserts.js";
+import { assign } from "../obj.js";
 
 /***
  * @template Return
@@ -127,15 +127,16 @@ class VectorTileLayer extends BaseVectorLayer {
      */
     this.un;
 
-    if (options.renderMode === VectorTileRenderType.IMAGE) {
-      //FIXME deprecated - remove this check in v7.
-      //eslint-disable-next-line
-      console.warn('renderMode: "image" is deprecated. Option ignored.')
-      options.renderMode = undefined;
-    }
+    // if (options.renderMode === VectorTileRenderType.IMAGE) {
+    //   //FIXME deprecated - remove this check in v7.
+    //   //eslint-disable-next-line
+    //   console.warn('renderMode: "image" is deprecated. Option ignored.')
+    //   options.renderMode = undefined;
+    // }
     const renderMode = options.renderMode || VectorTileRenderType.HYBRID;
     assert(
-      renderMode == VectorTileRenderType.HYBRID ||
+      renderMode == VectorTileRenderType.IMAGE ||
+        renderMode == VectorTileRenderType.HYBRID ||
         renderMode == VectorTileRenderType.VECTOR,
       28
     ); // `renderMode` must be `'hybrid'` or `'vector'`.

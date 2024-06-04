@@ -1,17 +1,17 @@
 /**
  * @module ol/renderer/canvas/VectorTileLayer
  */
-import CanvasBuilderGroup from '../../render/canvas/BuilderGroup.js';
-import CanvasExecutorGroup from '../../render/canvas/ExecutorGroup.js';
-import CanvasTileLayerRenderer from './TileLayer.js';
-import TileState from '../../TileState.js';
-import VectorTileRenderType from '../../layer/VectorTileRenderType.js';
-import ViewHint from '../../ViewHint.js';
+import CanvasBuilderGroup from "../../render/canvas/BuilderGroup.js";
+import CanvasExecutorGroup from "../../render/canvas/ExecutorGroup.js";
+import CanvasTileLayerRenderer from "./TileLayer.js";
+import TileState from "../../TileState.js";
+import VectorTileRenderType from "../../layer/VectorTileRenderType.js";
+import ViewHint from "../../ViewHint.js";
 import {
   HIT_DETECT_RESOLUTION,
   createHitDetectionImageData,
   hitDetect,
-} from '../../render/canvas/hitdetect.js';
+} from "../../render/canvas/hitdetect.js";
 import {
   apply as applyTransform,
   create as createTransform,
@@ -20,7 +20,7 @@ import {
   scale,
   scale as scaleTransform,
   translate as translateTransform,
-} from '../../transform.js';
+} from "../../transform.js";
 import {
   boundingExtent,
   buffer,
@@ -29,30 +29,31 @@ import {
   getIntersection,
   getTopLeft,
   intersects,
-} from '../../extent.js';
+} from "../../extent.js";
 import {
   getSquaredTolerance as getSquaredRenderTolerance,
   renderFeature,
-} from '../vector.js';
-import {getUid} from '../../util.js';
-import {toSize} from '../../size.js';
-import {wrapX} from '../../coordinate.js';
+} from "../vector.js";
+import { getUid } from "../../util.js";
+import { toSize } from "../../size.js";
+import { wrapX } from "../../coordinate.js";
 
 /**
  * @type {!Object<string, Array<import("../../render/canvas.js").BuilderType>>}
  */
 const IMAGE_REPLAYS = {
-  'image': ['Polygon', 'Circle', 'LineString', 'Image', 'Text'],
-  'hybrid': ['Polygon', 'LineString'],
-  'vector': [],
+  image: ["Polygon", "Circle", "LineString", "Image", "Text"],
+  hybrid: ["Polygon", "LineString"],
+  vector: [],
 };
 
 /**
  * @type {!Object<string, Array<import("../../render/canvas.js").BuilderType>>}
  */
 const VECTOR_REPLAYS = {
-  'hybrid': ['Image', 'Text', 'Default'],
-  'vector': ['Polygon', 'Circle', 'LineString', 'Image', 'Text', 'Default'],
+  image: ["Default"],
+  hybrid: ["Image", "Text", "Default"],
+  vector: ["Polygon", "Circle", "LineString", "Image", "Text", "Default"],
 };
 
 /**
@@ -638,6 +639,9 @@ class CanvasVectorTileLayerRenderer extends CanvasTileLayerRenderer {
       this.getLayer()
     );
     const renderMode = layer.getRenderMode();
+    if (renderMode === VectorTileRenderType.IMAGE) {
+      return this.container;
+    }
     const context = this.context;
     const alpha = context.globalAlpha;
     context.globalAlpha = layer.getOpacity();
