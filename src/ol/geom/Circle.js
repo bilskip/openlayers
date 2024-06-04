@@ -4,7 +4,7 @@
 import SimpleGeometry from './SimpleGeometry.js';
 import {createOrUpdate, forEachCorner, intersects} from '../extent.js';
 import {deflateCoordinate} from './flat/deflate.js';
-import {rotate} from './flat/transform.js';
+import {rotate, translate} from './flat/transform.js';
 
 /**
  * @classdesc
@@ -15,18 +15,18 @@ import {rotate} from './flat/transform.js';
 class Circle extends SimpleGeometry {
   /**
    * @param {!import("../coordinate.js").Coordinate} center Center.
-   *     For internal use, flat coordinates in combination with `layout` and no
-   *     `radius` are also accepted.
-   * @param {number} [radius] Radius in units of the projection.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   *     For internal use, flat coordinates in combination with `opt_layout` and no
+   *     `opt_radius` are also accepted.
+   * @param {number} [opt_radius] Radius.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    */
-  constructor(center, radius, layout) {
+  constructor(center, opt_radius, opt_layout) {
     super();
-    if (layout !== undefined && radius === undefined) {
-      this.setFlatCoordinates(layout, center);
+    if (opt_layout !== undefined && opt_radius === undefined) {
+      this.setFlatCoordinates(opt_layout, center);
     } else {
-      radius = radius ? radius : 0;
-      this.setCenterAndRadius(center, radius, layout);
+      const radius = opt_radius ? opt_radius : 0;
+      this.setCenterAndRadius(center, radius, opt_layout);
     }
   }
 
@@ -72,8 +72,9 @@ class Circle extends SimpleGeometry {
       }
       closestPoint.length = this.stride;
       return squaredDistance;
+    } else {
+      return minSquaredDistance;
     }
-    return minSquaredDistance;
   }
 
   /**
@@ -187,11 +188,11 @@ class Circle extends SimpleGeometry {
    * number) of the circle.
    * @param {!import("../coordinate.js").Coordinate} center Center.
    * @param {number} radius Radius.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    * @api
    */
-  setCenterAndRadius(center, radius, layout) {
-    this.setLayout(layout, center, 0);
+  setCenterAndRadius(center, radius, opt_layout) {
+    this.setLayout(opt_layout, center, 0);
     if (!this.flatCoordinates) {
       this.flatCoordinates = [];
     }
@@ -210,7 +211,7 @@ class Circle extends SimpleGeometry {
     return null;
   }
 
-  setCoordinates(coordinates, layout) {}
+  setCoordinates(coordinates, opt_layout) {}
 
   /**
    * Set the radius of the circle. The radius is in the units of the projection.
@@ -234,6 +235,22 @@ class Circle extends SimpleGeometry {
     const stride = this.getStride();
     this.setCenter(
       rotate(center, 0, center.length, stride, angle, anchor, center)
+    );
+    this.changed();
+  }
+
+  /**
+   * Translate the geometry.  This modifies the geometry coordinates in place.  If
+   * instead you want a new geometry, first `clone()` this geometry.
+   * @param {number} deltaX Delta X.
+   * @param {number} deltaY Delta Y.
+   * @api
+   */
+  translate(deltaX, deltaY) {
+    const center = this.getCenter();
+    const stride = this.getStride();
+    this.setCenter(
+      translate(center, 0, center.length, stride, deltaX, deltaY, center)
     );
     this.changed();
   }

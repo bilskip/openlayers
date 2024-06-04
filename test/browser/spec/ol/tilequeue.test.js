@@ -1,6 +1,5 @@
 import ImageTile from '../../../../src/ol/ImageTile.js';
 import Tile from '../../../../src/ol/Tile.js';
-import TileCache from '../../../../src/ol/TileCache.js';
 import TileQueue from '../../../../src/ol/TileQueue.js';
 import TileState from '../../../../src/ol/TileState.js';
 import {DROP} from '../../../../src/ol/structs/PriorityQueue.js';
@@ -150,7 +149,7 @@ describe('ol.TileQueue', function () {
       expect(tile.hasListener('change')).to.be(false);
     });
 
-    it('error tiles - with retry', function (done) {
+    it('error tiles', function () {
       const tq = new TileQueue(noop, noop);
       const tile = createImageTile(noop);
 
@@ -161,47 +160,7 @@ describe('ol.TileQueue', function () {
 
       tile.setState(TileState.ERROR);
       expect(tq.getTilesLoading()).to.eql(0);
-      expect(tile.hasListener('change')).to.be(true);
-
-      tile.setState(TileState.IDLE);
-      setTimeout(() => tile.setState(TileState.LOADING), 100);
-      setTimeout(() => tile.setState(TileState.LOADED), 200);
-      setTimeout(() => {
-        try {
-          expect(tq.getTilesLoading()).to.eql(0);
-          expect(tile.hasListener('change')).to.be(false);
-          done();
-        } catch (e) {
-          done(e);
-        }
-      }, 300);
-    });
-
-    it('error tiles - without retry', function (done) {
-      const tq = new TileQueue(noop, noop);
-      const tile = createImageTile(noop);
-      const tileCache = new TileCache();
-      tileCache.set(tile.getTileCoord().toString(), tile);
-
-      tq.enqueue([tile]);
-      tq.loadMoreTiles(Infinity, Infinity);
-      expect(tq.getTilesLoading()).to.eql(1);
-      expect(tile.getState()).to.eql(1); // LOADING
-
-      tile.setState(TileState.ERROR);
-      expect(tq.getTilesLoading()).to.eql(0);
-      expect(tile.hasListener('change')).to.be(true);
-
-      setTimeout(() => tileCache.clear(), 100);
-      setTimeout(() => {
-        try {
-          expect(tq.getTilesLoading()).to.eql(0);
-          expect(tile.hasListener('change')).to.be(false);
-          done();
-        } catch (e) {
-          done(e);
-        }
-      }, 200);
+      expect(tile.hasListener('change')).to.be(false);
     });
   });
 });

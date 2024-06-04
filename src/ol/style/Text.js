@@ -2,19 +2,8 @@
  * @module ol/style/Text
  */
 import Fill from './Fill.js';
+import TextPlacement from './TextPlacement.js';
 import {toSize} from '../size.js';
-
-/**
- * @typedef {'point' | 'line'} TextPlacement
- * Default text placement is `'point'`. Note that
- * `'line'` requires the underlying geometry to be a {@link module:ol/geom/LineString~LineString},
- * {@link module:ol/geom/Polygon~Polygon}, {@link module:ol/geom/MultiLineString~MultiLineString} or
- * {@link module:ol/geom/MultiPolygon~MultiPolygon}.
- */
-
-/**
- * @typedef {'left' | 'center' | 'right'} TextJustify
- */
 
 /**
  * The default fill color to use if no fill was set at construction time; a
@@ -26,17 +15,15 @@ const DEFAULT_FILL_COLOR = '#333';
 
 /**
  * @typedef {Object} Options
- * @property {string} [font] Font style as CSS `font` value, see:
- * https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/font. Default is `'10px sans-serif'`
+ * @property {string} [font] Font style as CSS 'font' value, see:
+ * https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/font. Default is '10px sans-serif'
  * @property {number} [maxAngle=Math.PI/4] When `placement` is set to `'line'`, allow a maximum angle between adjacent characters.
  * The expected value is in radians, and the default is 45° (`Math.PI / 4`).
  * @property {number} [offsetX=0] Horizontal text offset in pixels. A positive will shift the text right.
  * @property {number} [offsetY=0] Vertical text offset in pixels. A positive will shift the text down.
  * @property {boolean} [overflow=false] For polygon labels or when `placement` is set to `'line'`, allow text to exceed
  * the width of the polygon at the label position or the length of the path that it follows.
- * @property {TextPlacement} [placement='point'] Text placement.
- * @property {number} [repeat] Repeat interval. When set, the text will be repeated at this interval, which specifies
- * the distance between two text anchors in pixels. Only available when `placement` is set to `'line'`. Overrides 'textAlign'.
+ * @property {import("./TextPlacement.js").default|string} [placement='point'] Text placement.
  * @property {number|import("../size.js").Size} [scale] Scale.
  * @property {boolean} [rotateWithView=false] Whether to rotate the text with the view.
  * @property {number} [rotation=0] Rotation in radians (positive rotation clockwise).
@@ -44,16 +31,16 @@ const DEFAULT_FILL_COLOR = '#333';
  * contain line breaks (`\n`). For rich text provide an array of text/font tuples. A tuple consists of the text to
  * render and the font to use (or `''` to use the text style's font). A line break has to be a separate tuple (i.e. `'\n', ''`).
  * **Example:** `['foo', 'bold 10px sans-serif', ' bar', 'italic 10px sans-serif', ' baz', '']` will yield "**foo** *bar* baz".
- * **Note:** Rich text is not supported for `placement: 'line'` or the immediate rendering API.
- * @property {CanvasTextAlign} [textAlign] Text alignment. Possible values: `'left'`, `'right'`, `'center'`, `'end'` or `'start'`.
- * Default is `'center'` for `placement: 'point'`. For `placement: 'line'`, the default is to let the renderer choose a
+ * **Note:** Rich text is not supported for the immediate rendering API.
+ * @property {string} [textAlign] Text alignment. Possible values: 'left', 'right', 'center', 'end' or 'start'.
+ * Default is 'center' for `placement: 'point'`. For `placement: 'line'`, the default is to let the renderer choose a
  * placement where `maxAngle` is not exceeded.
- * @property {TextJustify} [justify] Text justification within the text box.
+ * @property {string} [justify] Text justification within the text box.
  * If not set, text is justified towards the `textAlign` anchor.
  * Otherwise, use options `'left'`, `'center'`, or `'right'` to justify the text within the text box.
  * **Note:** `justify` is ignored for immediate rendering and also for `placement: 'line'`.
- * @property {CanvasTextBaseline} [textBaseline='middle'] Text base line. Possible values: `'bottom'`, `'top'`, `'middle'`, `'alphabetic'`,
- * `'hanging'`, `'ideographic'`.
+ * @property {string} [textBaseline='middle'] Text base line. Possible values: 'bottom', 'top', 'middle', 'alphabetic',
+ * 'hanging', 'ideographic'.
  * @property {import("./Fill.js").default} [fill] Fill style. If none is provided, we'll use a dark fill-style (#333).
  * @property {import("./Stroke.js").default} [stroke] Stroke style.
  * @property {import("./Fill.js").default} [backgroundFill] Fill style for the text background when `placement` is
@@ -71,10 +58,10 @@ const DEFAULT_FILL_COLOR = '#333';
  */
 class Text {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options || {};
+  constructor(opt_options) {
+    const options = opt_options || {};
 
     /**
      * @private
@@ -114,25 +101,19 @@ class Text {
 
     /**
      * @private
-     * @type {CanvasTextAlign|undefined}
+     * @type {string|undefined}
      */
     this.textAlign_ = options.textAlign;
 
     /**
      * @private
-     * @type {TextJustify|undefined}
+     * @type {string|undefined}
      */
     this.justify_ = options.justify;
 
     /**
      * @private
-     * @type {number|undefined}
-     */
-    this.repeat_ = options.repeat;
-
-    /**
-     * @private
-     * @type {CanvasTextBaseline|undefined}
+     * @type {string|undefined}
      */
     this.textBaseline_ = options.textBaseline;
 
@@ -154,10 +135,10 @@ class Text {
 
     /**
      * @private
-     * @type {TextPlacement}
+     * @type {import("./TextPlacement.js").default|string}
      */
     this.placement_ =
-      options.placement !== undefined ? options.placement : 'point';
+      options.placement !== undefined ? options.placement : TextPlacement.POINT;
 
     /**
      * @private
@@ -216,7 +197,6 @@ class Text {
     return new Text({
       font: this.getFont(),
       placement: this.getPlacement(),
-      repeat: this.getRepeat(),
       maxAngle: this.getMaxAngle(),
       overflow: this.getOverflow(),
       rotation: this.getRotation(),
@@ -269,20 +249,11 @@ class Text {
 
   /**
    * Get the label placement.
-   * @return {TextPlacement} Text placement.
+   * @return {import("./TextPlacement.js").default|string} Text placement.
    * @api
    */
   getPlacement() {
     return this.placement_;
-  }
-
-  /**
-   * Get the repeat interval of the text.
-   * @return {number|undefined} Repeat interval in pixels.
-   * @api
-   */
-  getRepeat() {
-    return this.repeat_;
   }
 
   /**
@@ -367,7 +338,7 @@ class Text {
 
   /**
    * Get the text alignment.
-   * @return {CanvasTextAlign|undefined} Text align.
+   * @return {string|undefined} Text align.
    * @api
    */
   getTextAlign() {
@@ -376,7 +347,7 @@ class Text {
 
   /**
    * Get the justification.
-   * @return {TextJustify|undefined} Justification.
+   * @return {string|undefined} Justification.
    * @api
    */
   getJustify() {
@@ -385,7 +356,7 @@ class Text {
 
   /**
    * Get the text baseline.
-   * @return {CanvasTextBaseline|undefined} Text baseline.
+   * @return {string|undefined} Text baseline.
    * @api
    */
   getTextBaseline() {
@@ -472,20 +443,11 @@ class Text {
   /**
    * Set the text placement.
    *
-   * @param {TextPlacement} placement Placement.
+   * @param {import("./TextPlacement.js").default|string} placement Placement.
    * @api
    */
   setPlacement(placement) {
     this.placement_ = placement;
-  }
-
-  /**
-   * Set the repeat interval of the text.
-   * @param {number|undefined} [repeat] Repeat interval in pixels.
-   * @api
-   */
-  setRepeat(repeat) {
-    this.repeat_ = repeat;
   }
 
   /**
@@ -552,7 +514,7 @@ class Text {
   /**
    * Set the text alignment.
    *
-   * @param {CanvasTextAlign|undefined} textAlign Text align.
+   * @param {string|undefined} textAlign Text align.
    * @api
    */
   setTextAlign(textAlign) {
@@ -562,7 +524,7 @@ class Text {
   /**
    * Set the justification.
    *
-   * @param {TextJustify|undefined} justify Justification.
+   * @param {string|undefined} justify Justification.
    * @api
    */
   setJustify(justify) {
@@ -572,7 +534,7 @@ class Text {
   /**
    * Set the text baseline.
    *
-   * @param {CanvasTextBaseline|undefined} textBaseline Text baseline.
+   * @param {string|undefined} textBaseline Text baseline.
    * @api
    */
   setTextBaseline(textBaseline) {

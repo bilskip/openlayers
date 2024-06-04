@@ -43,22 +43,19 @@ const vienna = new Overlay({
 });
 map.addOverlay(vienna);
 
-const element = popup.getElement();
 map.on('click', function (evt) {
+  const element = popup.getElement();
   const coordinate = evt.coordinate;
   const hdms = toStringHDMS(toLonLat(coordinate));
+
+  $(element).popover('dispose');
   popup.setPosition(coordinate);
-  let popover = bootstrap.Popover.getInstance(element);
-  if (popover) {
-    popover.dispose();
-  }
-  popover = new bootstrap.Popover(element, {
-    animation: false,
+  $(element).popover({
     container: element,
-    content: '<p>The location you clicked was:</p><code>' + hdms + '</code>',
-    html: true,
     placement: 'top',
-    title: 'Welcome to OpenLayers',
+    animation: false,
+    html: true,
+    content: '<p>The location you clicked was:</p><code>' + hdms + '</code>',
   });
-  popover.show();
+  $(element).popover('show');
 });

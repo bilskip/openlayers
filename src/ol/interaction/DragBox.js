@@ -117,9 +117,9 @@ export class DragBoxEvent extends Event {
  */
 class DragBox extends PointerInteraction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
     /***
@@ -137,7 +137,7 @@ class DragBox extends PointerInteraction {
      */
     this.un;
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @type {import("../render/Box.js").default}
@@ -260,8 +260,9 @@ class DragBox extends PointerInteraction {
         )
       );
       return true;
+    } else {
+      return false;
     }
-    return false;
   }
 
   /**

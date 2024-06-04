@@ -3,6 +3,7 @@ import Map from '../src/ol/Map.js';
 import VectorSource from '../src/ol/source/Vector.js';
 import View from '../src/ol/View.js';
 import XYZ from '../src/ol/source/XYZ.js';
+import {Stroke, Style} from '../src/ol/style.js';
 import {Tile as TileLayer, Vector as VectorLayer} from '../src/ol/layer.js';
 import {bbox as bboxStrategy} from '../src/ol/loadingstrategy.js';
 
@@ -23,11 +24,12 @@ const vectorSource = new VectorSource({
 
 const vector = new VectorLayer({
   source: vectorSource,
-  style: {
-    'stroke-width': 0.75,
-    'stroke-color': 'white',
-    'fill-color': 'rgba(100,100,100,0.25)',
-  },
+  style: new Style({
+    stroke: new Stroke({
+      color: 'rgba(0, 0, 255, 1.0)',
+      width: 2,
+    }),
+  }),
 });
 
 const key = 'get_your_own_D6rA4zTHduk6KOKTXzGB';

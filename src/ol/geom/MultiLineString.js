@@ -1,6 +1,7 @@
 /**
  * @module ol/geom/MultiLineString
  */
+import GeometryLayout from './GeometryLayout.js';
 import LineString from './LineString.js';
 import SimpleGeometry from './SimpleGeometry.js';
 import {arrayMaxSquaredDelta, assignClosestArrayPoint} from './flat/closest.js';
@@ -25,11 +26,11 @@ class MultiLineString extends SimpleGeometry {
   /**
    * @param {Array<Array<import("../coordinate.js").Coordinate>|LineString>|Array<number>} coordinates
    *     Coordinates or LineString geometries. (For internal use, flat coordinates in
-   *     combination with `layout` and `ends` are also accepted.)
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
-   * @param {Array<number>} [ends] Flat coordinate ends for internal use.
+   *     combination with `opt_layout` and `opt_ends` are also accepted.)
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @param {Array<number>} [opt_ends] Flat coordinate ends for internal use.
    */
-  constructor(coordinates, layout, ends) {
+  constructor(coordinates, opt_layout, opt_ends) {
     super();
 
     /**
@@ -55,14 +56,14 @@ class MultiLineString extends SimpleGeometry {
         /** @type {Array<Array<import("../coordinate.js").Coordinate>>} */ (
           coordinates
         ),
-        layout
+        opt_layout
       );
-    } else if (layout !== undefined && ends) {
+    } else if (opt_layout !== undefined && opt_ends) {
       this.setFlatCoordinates(
-        layout,
+        opt_layout,
         /** @type {Array<number>} */ (coordinates)
       );
-      this.ends_ = ends;
+      this.ends_ = opt_ends;
     } else {
       let layout = this.getLayout();
       const lineStrings = /** @type {Array<LineString>} */ (coordinates);
@@ -152,33 +153,34 @@ class MultiLineString extends SimpleGeometry {
    * Returns the coordinate at `m` using linear interpolation, or `null` if no
    * such coordinate exists.
    *
-   * `extrapolate` controls extrapolation beyond the range of Ms in the
-   * MultiLineString. If `extrapolate` is `true` then Ms less than the first
+   * `opt_extrapolate` controls extrapolation beyond the range of Ms in the
+   * MultiLineString. If `opt_extrapolate` is `true` then Ms less than the first
    * M will return the first coordinate and Ms greater than the last M will
    * return the last coordinate.
    *
-   * `interpolate` controls interpolation between consecutive LineStrings
-   * within the MultiLineString. If `interpolate` is `true` the coordinates
+   * `opt_interpolate` controls interpolation between consecutive LineStrings
+   * within the MultiLineString. If `opt_interpolate` is `true` the coordinates
    * will be linearly interpolated between the last coordinate of one LineString
-   * and the first coordinate of the next LineString.  If `interpolate` is
+   * and the first coordinate of the next LineString.  If `opt_interpolate` is
    * `false` then the function will return `null` for Ms falling between
    * LineStrings.
    *
    * @param {number} m M.
-   * @param {boolean} [extrapolate] Extrapolate. Default is `false`.
-   * @param {boolean} [interpolate] Interpolate. Default is `false`.
+   * @param {boolean} [opt_extrapolate] Extrapolate. Default is `false`.
+   * @param {boolean} [opt_interpolate] Interpolate. Default is `false`.
    * @return {import("../coordinate.js").Coordinate|null} Coordinate.
    * @api
    */
-  getCoordinateAtM(m, extrapolate, interpolate) {
+  getCoordinateAtM(m, opt_extrapolate, opt_interpolate) {
     if (
-      (this.layout != 'XYM' && this.layout != 'XYZM') ||
+      (this.layout != GeometryLayout.XYM &&
+        this.layout != GeometryLayout.XYZM) ||
       this.flatCoordinates.length === 0
     ) {
       return null;
     }
-    extrapolate = extrapolate !== undefined ? extrapolate : false;
-    interpolate = interpolate !== undefined ? interpolate : false;
+    const extrapolate = opt_extrapolate !== undefined ? opt_extrapolate : false;
+    const interpolate = opt_interpolate !== undefined ? opt_interpolate : false;
     return lineStringsCoordinateAtM(
       this.flatCoordinates,
       0,
@@ -296,7 +298,11 @@ class MultiLineString extends SimpleGeometry {
       0,
       simplifiedEnds
     );
-    return new MultiLineString(simplifiedFlatCoordinates, 'XY', simplifiedEnds);
+    return new MultiLineString(
+      simplifiedFlatCoordinates,
+      GeometryLayout.XY,
+      simplifiedEnds
+    );
   }
 
   /**
@@ -327,11 +333,11 @@ class MultiLineString extends SimpleGeometry {
   /**
    * Set the coordinates of the multilinestring.
    * @param {!Array<Array<import("../coordinate.js").Coordinate>>} coordinates Coordinates.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   * @param {GeometryLayout} [opt_layout] Layout.
    * @api
    */
-  setCoordinates(coordinates, layout) {
-    this.setLayout(layout, coordinates, 2);
+  setCoordinates(coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 2);
     if (!this.flatCoordinates) {
       this.flatCoordinates = [];
     }

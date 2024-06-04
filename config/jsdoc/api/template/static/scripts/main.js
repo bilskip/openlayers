@@ -87,19 +87,17 @@ $(function () {
       manualToggles = {};
       const lastTerm = search.lastSearchTerm;
       search.lastSearchTerm = undefined;
-      if (currentItem) {
-        const fa = currentItem.querySelector('.title > .fa');
-        fa.classList.add('no-transition');
-        setTimeout(function () {
-          fa.classList.remove('no-transition');
-        }, 0);
-      }
+      const fa = currentItem.querySelector('.title > .fa');
+      fa.classList.add('no-transition');
       doSearch(lastTerm || '');
 
       // Transfer manual toggle state to newly loaded current node
       if (initialCurrent && initialCurrent.classList.contains('toggle-manual')) {
         search.manualToggle(search.$currentItem, initialCurrent.classList.contains('toggle-manual-show'));
       }
+      setTimeout(function () {
+        fa.classList.remove('no-transition');
+      }, 0);
     });
 
     return {
@@ -277,28 +275,28 @@ $(function () {
   });
 
   // warn about outdated version
-  const currentVersion = document.getElementById('package-version').innerHTML;
-  const releaseUrl = 'https://cdn.jsdelivr.net/npm/ol/package.json';
-  fetch(releaseUrl).then(function(response) {
+  var currentVersion = document.getElementById('package-version').innerHTML;
+  var packageUrl = 'https://raw.githubusercontent.com/openlayers/openlayers.github.io/build/package.json';
+  fetch(packageUrl).then(function(response) {
     return response.json();
   }).then(function(json) {
-    const latestVersion = json.version;
+    var latestVersion = json.version;
     document.getElementById('latest-version').innerHTML = latestVersion;
-    const url = window.location.href;
-    const branchSearch = url.match(/\/([^\/]*)\/apidoc\//);
-    const storageKey = 'dismissed=-' + latestVersion;
-    const dismissed = localStorage.getItem(storageKey) === 'true';
+    var url = window.location.href;
+    var branchSearch = url.match(/\/([^\/]*)\/apidoc\//);
+    var cookieText = 'dismissed=-' + latestVersion + '-';
+    var dismissed = document.cookie.indexOf(cookieText) != -1;
     if (branchSearch && !dismissed && /^v[0-9\.]*$/.test(branchSearch[1]) && currentVersion != latestVersion) {
-      const link = url.replace(branchSearch[0], '/latest/apidoc/');
+      var link = url.replace(branchSearch[0], '/latest/apidoc/');
       fetch(link, {method: 'head'}).then(function(response) {
-        const a = document.getElementById('latest-link');
+        var a = document.getElementById('latest-link');
         a.href = response.status == 200 ? link : '../../latest/apidoc/';
       });
-      const latestCheck = document.getElementById('latest-check');
+      var latestCheck = document.getElementById('latest-check');
       latestCheck.style.display = '';
       document.getElementById('latest-dismiss').onclick = function() {
         latestCheck.style.display = 'none';
-        localStorage.setItem(storageKey, 'true');
+        document.cookie = cookieText;
       }
     }
   });

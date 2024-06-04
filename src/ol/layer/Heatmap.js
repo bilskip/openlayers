@@ -3,6 +3,7 @@
  */
 import BaseVector from './BaseVector.js';
 import WebGLPointsLayerRenderer from '../renderer/webgl/PointsLayer.js';
+import {assign} from '../obj.js';
 import {clamp} from '../math.js';
 import {createCanvasContext2D} from '../dom.js';
 
@@ -65,12 +66,12 @@ const DEFAULT_GRADIENT = ['#00f', '#0ff', '#0f0', '#ff0', '#f00'];
  */
 class Heatmap extends BaseVector {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
-    const baseOptions = Object.assign({}, options);
+    const baseOptions = assign({}, options);
 
     delete baseOptions.gradient;
     delete baseOptions.radius;
@@ -179,14 +180,50 @@ class Heatmap extends BaseVector {
       attributes: [
         {
           name: 'weight',
-          callback: (feature) => {
+          callback: function (feature) {
             const weight = this.weightFunction_(feature);
             return weight !== undefined ? clamp(weight, 0, 1) : 1;
-          },
+          }.bind(this),
         },
       ],
-      hitDetectionEnabled: true,
       vertexShader: `
+        precision mediump float;
+        uniform mat4 u_projectionMatrix;
+        uniform mat4 u_offsetScaleMatrix;
+        uniform float u_size;
+        attribute vec2 a_position;
+        attribute float a_index;
+        attribute float a_weight;
+
+        varying vec2 v_texCoord;
+        varying float v_weight;
+
+        void main(void) {
+          mat4 offsetMatrix = u_offsetScaleMatrix;
+          float offsetX = a_index == 0.0 || a_index == 3.0 ? -u_size / 2.0 : u_size / 2.0;
+          float offsetY = a_index == 0.0 || a_index == 1.0 ? -u_size / 2.0 : u_size / 2.0;
+          vec4 offsets = offsetMatrix * vec4(offsetX, offsetY, 0.0, 0.0);
+          gl_Position = u_projectionMatrix * vec4(a_position, 0.0, 1.0) + offsets;
+          float u = a_index == 0.0 || a_index == 3.0 ? 0.0 : 1.0;
+          float v = a_index == 0.0 || a_index == 1.0 ? 0.0 : 1.0;
+          v_texCoord = vec2(u, v);
+          v_weight = a_weight;
+        }`,
+      fragmentShader: `
+        precision mediump float;
+        uniform float u_blurSlope;
+
+        varying vec2 v_texCoord;
+        varying float v_weight;
+
+        void main(void) {
+          vec2 texCoord = v_texCoord * 2.0 - vec2(1.0, 1.0);
+          float sqRadius = texCoord.x * texCoord.x + texCoord.y * texCoord.y;
+          float value = (1.0 - sqrt(sqRadius)) * u_blurSlope;
+          float alpha = smoothstep(0.0, 1.0, value) * v_weight;
+          gl_FragColor = vec4(alpha, alpha, alpha, alpha);
+        }`,
+      hitVertexShader: `
         precision mediump float;
         uniform mat4 u_projectionMatrix;
         uniform mat4 u_offsetScaleMatrix;
@@ -212,10 +249,9 @@ class Heatmap extends BaseVector {
           v_hitColor = a_hitColor;
           v_weight = a_weight;
         }`,
-      fragmentShader: `
+      hitFragmentShader: `
         precision mediump float;
         uniform float u_blurSlope;
-        uniform mediump int u_hitDetection;
 
         varying vec2 v_texCoord;
         varying float v_weight;
@@ -226,23 +262,21 @@ class Heatmap extends BaseVector {
           float sqRadius = texCoord.x * texCoord.x + texCoord.y * texCoord.y;
           float value = (1.0 - sqrt(sqRadius)) * u_blurSlope;
           float alpha = smoothstep(0.0, 1.0, value) * v_weight;
-          gl_FragColor = vec4(alpha, alpha, alpha, alpha);
-          if (u_hitDetection > 0) {
-            if (alpha < 0.05) {
-              discard;
-            }
-            gl_FragColor = v_hitColor;
+          if (alpha < 0.05) {
+            discard;
           }
-      }`,
+
+          gl_FragColor = v_hitColor;
+        }`,
       uniforms: {
-        u_size: () => {
+        u_size: function () {
           return (this.get(Property.RADIUS) + this.get(Property.BLUR)) * 2;
-        },
-        u_blurSlope: () => {
+        }.bind(this),
+        u_blurSlope: function () {
           return (
             this.get(Property.RADIUS) / Math.max(1, this.get(Property.BLUR))
           );
-        },
+        }.bind(this),
       },
       postProcesses: [
         {
@@ -262,12 +296,12 @@ class Heatmap extends BaseVector {
               gl_FragColor.rgb *= gl_FragColor.a;
             }`,
           uniforms: {
-            u_gradientTexture: () => {
+            u_gradientTexture: function () {
               return this.gradient_;
-            },
-            u_opacity: () => {
+            }.bind(this),
+            u_opacity: function () {
               return this.getOpacity();
-            },
+            }.bind(this),
           },
         },
       ],

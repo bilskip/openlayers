@@ -6,13 +6,14 @@ import ImageTile from '../../ImageTile.js';
 import ReprojTile from '../../reproj/Tile.js';
 import TileRange from '../../TileRange.js';
 import TileState from '../../TileState.js';
+import {IMAGE_SMOOTHING_DISABLED, IMAGE_SMOOTHING_ENABLED} from './common.js';
 import {
   apply as applyTransform,
   compose as composeTransform,
   makeInverse,
   toString as toTransformString,
 } from '../../transform.js';
-import {ascending} from '../../array.js';
+import {assign} from '../../obj.js';
 import {
   containsCoordinate,
   createEmpty,
@@ -26,6 +27,7 @@ import {
 } from '../../extent.js';
 import {fromUserExtent} from '../../proj.js';
 import {getUid} from '../../util.js';
+import {numberSafeCompareFunction} from '../../array.js';
 import {toSize} from '../../size.js';
 
 /**
@@ -117,7 +119,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
    * @param {number} z Tile coordinate z.
    * @param {number} x Tile coordinate x.
    * @param {number} y Tile coordinate y.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @return {!import("../../Tile.js").default} Tile.
    */
   getTile(z, x, y, frameState) {
@@ -127,7 +129,10 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     const tileSource = tileLayer.getSource();
     let tile = tileSource.getTile(z, x, y, pixelRatio, projection);
     if (tile.getState() == TileState.ERROR) {
-      if (tileLayer.getUseInterimTilesOnError() && tileLayer.getPreload() > 0) {
+      if (!tileLayer.getUseInterimTilesOnError()) {
+        // When useInterimTilesOnError is false, we consider the error tile as loaded.
+        tile.setState(TileState.LOADED);
+      } else if (tileLayer.getPreload() > 0) {
         // Preloaded tiles for lower resolutions might have finished loading.
         this.newTiles_ = true;
       }
@@ -181,10 +186,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
         pixelRatio,
         projection
       );
-      if (
-        !(tile instanceof ImageTile || tile instanceof ReprojTile) ||
-        (tile instanceof ReprojTile && tile.getState() === TileState.EMPTY)
-      ) {
+      if (!(tile instanceof ImageTile || tile instanceof ReprojTile)) {
         return null;
       }
 
@@ -233,7 +235,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * Determine whether render should be called.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @return {boolean} Layer is ready to be rendered.
    */
   prepareFrame(frameState) {
@@ -242,7 +244,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * Render the layer.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @param {HTMLElement} target Target that may be used to render content to.
    * @return {HTMLElement} The rendered element.
    */
@@ -333,7 +335,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
             }
             if (
               !this.newTiles_ &&
-              (inTransition || !this.renderedTiles.includes(tile))
+              (inTransition || this.renderedTiles.indexOf(tile) === -1)
             ) {
               this.newTiles_ = true;
             }
@@ -412,7 +414,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     }
 
     if (!tileSource.getInterpolate()) {
-      context.imageSmoothingEnabled = false;
+      assign(context, IMAGE_SMOOTHING_DISABLED);
     }
 
     this.preRender(context, frameState);
@@ -420,7 +422,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     this.renderedTiles.length = 0;
     /** @type {Array<number>} */
     let zs = Object.keys(tilesToDrawByZ).map(Number);
-    zs.sort(ascending);
+    zs.sort(numberSafeCompareFunction);
 
     let clips, clipZs, currentClip;
     if (
@@ -563,7 +565,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     if (layerState.extent) {
       context.restore();
     }
-    context.imageSmoothingEnabled = true;
+    assign(context, IMAGE_SMOOTHING_ENABLED);
 
     if (canvasTransform !== canvas.style.transform) {
       canvas.style.transform = canvasTransform;
@@ -574,7 +576,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * @param {import("../../ImageTile.js").default} tile Tile.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @param {number} x Left of the tile.
    * @param {number} y Top of the tile.
    * @param {number} w Width of the tile.
@@ -638,7 +640,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
   }
 
   /**
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @param {import("../../source/Tile.js").default} tileSource Tile source.
    * @protected
    */
@@ -646,8 +648,8 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     if (tileSource.canExpireCache()) {
       /**
        * @param {import("../../source/Tile.js").default} tileSource Tile source.
-       * @param {import("../../Map.js").default} map Map.
-       * @param {import("../../Map.js").FrameState} frameState Frame state.
+       * @param {import("../../PluggableMap.js").default} map Map.
+       * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
        */
       const postRenderFunction = function (tileSource, map, frameState) {
         const tileSourceKey = getUid(tileSource);
@@ -660,7 +662,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
       }.bind(null, tileSource);
 
       frameState.postRenderFunctions.push(
-        /** @type {import("../../Map.js").PostRenderFunction} */ (
+        /** @type {import("../../PluggableMap.js").PostRenderFunction} */ (
           postRenderFunction
         )
       );
@@ -689,7 +691,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
    * - registers idle tiles in frameState.wantedTiles so that they are not
    *   discarded by the tile queue
    * - enqueues missing tiles
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @param {import("../../source/Tile.js").default} tileSource Tile source.
    * @param {import("../../tilegrid/TileGrid.js").default} tileGrid Tile grid.
    * @param {number} pixelRatio Pixel ratio.
@@ -697,7 +699,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
    * @param {import("../../extent.js").Extent} extent Extent.
    * @param {number} currentZ Current Z.
    * @param {number} preload Load low resolution tiles up to `preload` levels.
-   * @param {function(import("../../Tile.js").default):void} [tileCallback] Tile callback.
+   * @param {function(import("../../Tile.js").default):void} [opt_tileCallback] Tile callback.
    * @protected
    */
   manageTilePyramid(
@@ -709,7 +711,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     extent,
     currentZ,
     preload,
-    tileCallback
+    opt_tileCallback
   ) {
     const tileSourceKey = getUid(tileSource);
     if (!(tileSourceKey in frameState.wantedTiles)) {
@@ -754,8 +756,8 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
                 ]);
               }
             }
-            if (tileCallback !== undefined) {
-              tileCallback(tile);
+            if (opt_tileCallback !== undefined) {
+              opt_tileCallback(tile);
             }
           } else {
             tileSource.useTile(z, x, y, projection);

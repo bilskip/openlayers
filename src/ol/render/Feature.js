@@ -2,6 +2,7 @@
  * @module ol/render/Feature
  */
 import Feature from '../Feature.js';
+import GeometryLayout from '../geom/GeometryLayout.js';
 import {
   LineString,
   MultiLineString,
@@ -249,10 +250,10 @@ class RenderFeature {
    * Get a transformed and simplified version of the geometry.
    * @abstract
    * @param {number} squaredTolerance Squared tolerance.
-   * @param {import("../proj.js").TransformFunction} [transform] Optional transform function.
+   * @param {import("../proj.js").TransformFunction} [opt_transform] Optional transform function.
    * @return {RenderFeature} Simplified geometry.
    */
-  simplifyTransformed(squaredTolerance, transform) {
+  simplifyTransformed(squaredTolerance, opt_transform) {
     return this;
   }
 
@@ -349,13 +350,19 @@ export function toGeometry(renderFeature) {
     case 'Point':
       return new Point(renderFeature.getFlatCoordinates());
     case 'MultiPoint':
-      return new MultiPoint(renderFeature.getFlatCoordinates(), 'XY');
+      return new MultiPoint(
+        renderFeature.getFlatCoordinates(),
+        GeometryLayout.XY
+      );
     case 'LineString':
-      return new LineString(renderFeature.getFlatCoordinates(), 'XY');
+      return new LineString(
+        renderFeature.getFlatCoordinates(),
+        GeometryLayout.XY
+      );
     case 'MultiLineString':
       return new MultiLineString(
         renderFeature.getFlatCoordinates(),
-        'XY',
+        GeometryLayout.XY,
         /** @type {Array<number>} */ (renderFeature.getEnds())
       );
     case 'Polygon':
@@ -363,8 +370,8 @@ export function toGeometry(renderFeature) {
       const ends = /** @type {Array<number>} */ (renderFeature.getEnds());
       const endss = inflateEnds(flatCoordinates, ends);
       return endss.length > 1
-        ? new MultiPolygon(flatCoordinates, 'XY', endss)
-        : new Polygon(flatCoordinates, 'XY', ends);
+        ? new MultiPolygon(flatCoordinates, GeometryLayout.XY, endss)
+        : new Polygon(flatCoordinates, GeometryLayout.XY, ends);
     default:
       throw new Error('Invalid geometry type:' + geometryType);
   }
@@ -373,19 +380,19 @@ export function toGeometry(renderFeature) {
 /**
  * Create an `ol/Feature` from an `ol/render/Feature`
  * @param {RenderFeature} renderFeature RenderFeature
- * @param {string} [geometryName='geometry'] Geometry name to use
+ * @param {string} [opt_geometryName='geometry'] Geometry name to use
  * when creating the Feature.
  * @return {Feature} Newly constructed `ol/Feature` with properties,
  * geometry, and id copied over.
  * @api
  */
-export function toFeature(renderFeature, geometryName) {
+export function toFeature(renderFeature, opt_geometryName) {
   const id = renderFeature.getId();
   const geometry = toGeometry(renderFeature);
   const properties = renderFeature.getProperties();
   const feature = new Feature();
-  if (geometryName !== undefined) {
-    feature.setGeometryName(geometryName);
+  if (opt_geometryName !== undefined) {
+    feature.setGeometryName(opt_geometryName);
   }
   feature.setGeometry(geometry);
   if (id !== undefined) {

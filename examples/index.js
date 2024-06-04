@@ -1,9 +1,7 @@
 (function () {
   'use strict';
   /* global info, jugl */
-
-  const template = new jugl.Template('template');
-  const target = document.getElementById('examples');
+  let template, target;
 
   function listExamples(examples) {
     target.innerHTML = '';
@@ -12,7 +10,7 @@
       clone: true,
       parent: target,
     });
-    document.getElementById('count').innerHTML = String(examples.length);
+    document.getElementById('count').innerHTML = ' ' + examples.length + ' ';
   }
 
   let timerId;
@@ -82,28 +80,31 @@
   function filterList(text) {
     const examples = getMatchingExamples(text);
     listExamples(examples);
-    updateHistoryState(text);
   }
 
-  function updateHistoryState(text) {
-    text = text.trim();
-    const params = new URLSearchParams(window.location.search);
-    if (text.length === 0) {
-      params.delete('q');
-    } else {
-      params.set('q', text);
+  function parseParams() {
+    const params = {};
+    const list = window.location.search
+      .substring(1)
+      .replace(/\+/g, '%20')
+      .split('&');
+    for (let i = 0; i < list.length; ++i) {
+      const pair = list[i].split('=');
+      if (pair.length === 2) {
+        params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+      }
     }
-    let fullUrl = window.location.pathname;
-    if (params.toString().length !== 0) {
-      fullUrl += `?${params.toString()}`;
-    }
-    history.replaceState(null, '', fullUrl);
+    return params;
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const text = params.get('q') || '';
-  const input = document.getElementById('keywords');
-  input.addEventListener('input', inputChange);
-  input.value = text;
-  filterList(text);
+  window.addEventListener('load', function () {
+    template = new jugl.Template('template');
+    target = document.getElementById('examples');
+    const params = parseParams();
+    const text = params['q'] || '';
+    const input = document.getElementById('keywords');
+    input.addEventListener('input', inputChange);
+    input.value = text;
+    filterList(text);
+  });
 })();

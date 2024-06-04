@@ -34,14 +34,14 @@ import {
  */
 class DragPan extends PointerInteraction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super({
       stopDown: FALSE,
     });
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @private
@@ -88,13 +88,12 @@ class DragPan extends PointerInteraction {
    * @param {import("../MapBrowserEvent.js").default} mapBrowserEvent Event.
    */
   handleDragEvent(mapBrowserEvent) {
-    const map = mapBrowserEvent.map;
     if (!this.panning_) {
       this.panning_ = true;
-      map.getView().beginInteraction();
+      this.getMap().getView().beginInteraction();
     }
     const targetPointers = this.targetPointers;
-    const centroid = map.getEventPixel(centroidFromPointers(targetPointers));
+    const centroid = centroidFromPointers(targetPointers);
     if (targetPointers.length == this.lastPointersCount_) {
       if (this.kinetic_) {
         this.kinetic_.update(centroid[0], centroid[1]);
@@ -149,14 +148,15 @@ class DragPan extends PointerInteraction {
         view.endInteraction();
       }
       return false;
+    } else {
+      if (this.kinetic_) {
+        // reset so we don't overestimate the kinetic energy after
+        // after one finger up, tiny drag, second finger up
+        this.kinetic_.begin();
+      }
+      this.lastCentroid = null;
+      return true;
     }
-    if (this.kinetic_) {
-      // reset so we don't overestimate the kinetic energy after
-      // after one finger up, tiny drag, second finger up
-      this.kinetic_.begin();
-    }
-    this.lastCentroid = null;
-    return true;
   }
 
   /**
@@ -180,8 +180,9 @@ class DragPan extends PointerInteraction {
       // detected. This is to prevent nasty pans after pinch.
       this.noKinetic_ = this.targetPointers.length > 1;
       return true;
+    } else {
+      return false;
     }
-    return false;
   }
 }
 

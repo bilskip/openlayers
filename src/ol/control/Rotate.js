@@ -33,10 +33,10 @@ import {easeOut} from '../easing.js';
  */
 class Rotate extends Control {
   /**
-   * @param {Options} [options] Rotate options.
+   * @param {Options} [opt_options] Rotate options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     super({
       element: document.createElement('div'),

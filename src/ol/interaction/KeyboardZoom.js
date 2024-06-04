@@ -30,12 +30,12 @@ import {targetNotEditable} from '../events/condition.js';
  */
 class KeyboardZoom extends Interaction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @private
@@ -62,6 +62,7 @@ class KeyboardZoom extends Interaction {
    * key pressed was '+' or '-').
    * @param {import("../MapBrowserEvent.js").default} mapBrowserEvent Map browser event.
    * @return {boolean} `false` to stop event propagation.
+   * @this {KeyboardZoom}
    */
   handleEvent(mapBrowserEvent) {
     let stopEvent = false;
@@ -72,10 +73,14 @@ class KeyboardZoom extends Interaction {
       const keyEvent = /** @type {KeyboardEvent} */ (
         mapBrowserEvent.originalEvent
       );
-      const key = keyEvent.key;
-      if (this.condition_(mapBrowserEvent) && (key === '+' || key === '-')) {
+      const charCode = keyEvent.charCode;
+      if (
+        this.condition_(mapBrowserEvent) &&
+        (charCode == '+'.charCodeAt(0) || charCode == '-'.charCodeAt(0))
+      ) {
         const map = mapBrowserEvent.map;
-        const delta = key === '+' ? this.delta_ : -this.delta_;
+        const delta =
+          charCode == '+'.charCodeAt(0) ? this.delta_ : -this.delta_;
         const view = map.getView();
         zoomByDelta(view, delta, undefined, this.duration_);
         keyEvent.preventDefault();

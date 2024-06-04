@@ -172,6 +172,7 @@ li {
 }
 .navigation li.item .title {
   cursor: pointer;
+  display: -ms-flexbox;
   display: flex;
   font-size: 0.85em;
 }

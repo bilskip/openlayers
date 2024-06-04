@@ -2010,13 +2010,6 @@ describe('ol/View', function () {
       view.endInteraction();
       expect(view.getHints()[1]).to.be(0);
     });
-
-    it('does not allow hint value to become negative', function () {
-      view.beginInteraction();
-      view.endInteraction();
-      view.endInteraction();
-      expect(view.getHints()[1]).to.be(0);
-    });
   });
 
   describe('#getConstrainedZoom()', function () {

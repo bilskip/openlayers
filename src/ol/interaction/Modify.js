@@ -32,7 +32,7 @@ import {
   squaredDistanceToSegment,
 } from '../coordinate.js';
 import {createEditingStyle} from '../style/Style.js';
-import {equals} from '../array.js';
+import {equals, includes} from '../array.js';
 import {fromCircle} from '../geom/Polygon.js';
 import {
   fromUserCoordinate,
@@ -81,7 +81,7 @@ const ModifyEventType = {
 /**
  * @typedef {Object} SegmentData
  * @property {Array<number>} [depth] Depth.
- * @property {Feature} feature Feature.
+ * @property {import("../Feature").FeatureLike} feature Feature.
  * @property {import("../geom/SimpleGeometry.js").default} geometry Geometry.
  * @property {number} [index] Index.
  * @property {Array<Array<number>>} segment Segment.
@@ -106,7 +106,7 @@ const ModifyEventType = {
  * features. Default is {@link module:ol/events/condition.always}.
  * @property {number} [pixelTolerance=10] Pixel tolerance for considering the
  * pointer close enough to a segment or vertex for editing.
- * @property {import("../style/Style.js").StyleLike|import("../style/flat.js").FlatStyleLike} [style]
+ * @property {import("../style/Style.js").StyleLike} [style]
  * Style used for the modification point or vertex. For linestrings and polygons, this will
  * be the affected vertex, for circles a point along the circle, and for points the actual
  * point. If not configured, the default edit style is used (see {@link module:ol/style/Style~Style}).
@@ -139,7 +139,7 @@ const ModifyEventType = {
 export class ModifyEvent extends Event {
   /**
    * @param {ModifyEventType} type Type.
-   * @param {Collection<Feature>} features
+   * @param {Collection<import("../Feature").FeatureLike>} features
    * The features modified.
    * @param {import("../MapBrowserEvent.js").default} mapBrowserEvent
    * Associated {@link module:ol/MapBrowserEvent~MapBrowserEvent}.
@@ -149,7 +149,7 @@ export class ModifyEvent extends Event {
 
     /**
      * The features being modified.
-     * @type {Collection<Feature>}
+     * @type {Collection<import("../Feature").FeatureLike>}
      * @api
      */
     this.features = features;
@@ -279,7 +279,7 @@ class Modify extends PointerInteraction {
     this.ignoreNextSingleClick_ = false;
 
     /**
-     * @type {Collection<Feature>}
+     * @type {Collection<import("../Feature").FeatureLike>}
      * @private
      */
     this.featuresBeingModified_ = null;
@@ -361,7 +361,6 @@ class Modify extends PointerInteraction {
      */
     this.hitDetection_ = null;
 
-    /** @type {Collection<Feature>} */
     let features;
     if (options.features) {
       features = options.features;
@@ -387,7 +386,7 @@ class Modify extends PointerInteraction {
     }
 
     /**
-     * @type {Collection<Feature>}
+     * @type {Collection<import("../Feature.js").FeatureLike>}
      * @private
      */
     this.features_ = features;
@@ -455,7 +454,7 @@ class Modify extends PointerInteraction {
         const segment = segments[i];
         for (let s = 0, ss = segment.length; s < ss; ++s) {
           const feature = segment[s].feature;
-          if (feature && !features.includes(feature)) {
+          if (feature && features.indexOf(feature) === -1) {
             this.featuresBeingModified_.push(feature);
           }
         }
@@ -538,7 +537,7 @@ class Modify extends PointerInteraction {
    * Remove the interaction from its current map and attach it to the new map.
    * Subclasses may set up event handlers to get notified about changes to
    * the map here.
-   * @param {import("../Map.js").default} map Map.
+   * @param {import("../PluggableMap.js").default} map Map.
    */
   setMap(map) {
     this.overlay_.setMap(map);
@@ -575,11 +574,11 @@ class Modify extends PointerInteraction {
   }
 
   /**
-   * @param {import("../Collection.js").CollectionEvent<Feature>} evt Event.
+   * @param {import("../Collection.js").CollectionEvent} evt Event.
    * @private
    */
   handleFeatureAdd_(evt) {
-    this.addFeature_(evt.element);
+    this.addFeature_(/** @type {Feature} */ (evt.element));
   }
 
   /**
@@ -595,11 +594,12 @@ class Modify extends PointerInteraction {
   }
 
   /**
-   * @param {import("../Collection.js").CollectionEvent<Feature>} evt Event.
+   * @param {import("../Collection.js").CollectionEvent} evt Event.
    * @private
    */
   handleFeatureRemove_(evt) {
-    this.removeFeature_(evt.element);
+    const feature = /** @type {Feature} */ (evt.element);
+    this.removeFeature_(feature);
   }
 
   /**
@@ -812,7 +812,7 @@ class Modify extends PointerInteraction {
 
   /**
    * @param {import("../coordinate.js").Coordinate} coordinates Coordinates.
-   * @param {Array<Feature>} features The features being modified.
+   * @param {Array<import("../Feature").FeatureLike>} features The features being modified.
    * @param {Array<import("../geom/SimpleGeometry.js").default>} geometries The geometries being modified.
    * @return {Feature} Vertex feature.
    * @private
@@ -887,11 +887,11 @@ class Modify extends PointerInteraction {
       const dragSegment = this.dragSegments_[i];
       const segmentData = dragSegment[0];
       const feature = segmentData.feature;
-      if (!features.includes(feature)) {
+      if (features.indexOf(feature) === -1) {
         features.push(feature);
       }
       const geometry = segmentData.geometry;
-      if (!geometries.includes(geometry)) {
+      if (geometries.indexOf(geometry) === -1) {
         geometries.push(geometry);
       }
       const depth = segmentData.depth;
@@ -1158,12 +1158,12 @@ class Modify extends PointerInteraction {
 
   /**
    * @param {import("../pixel.js").Pixel} pixel Pixel
-   * @param {import("../Map.js").default} map Map.
-   * @param {import("../coordinate.js").Coordinate} [coordinate] The pixel Coordinate.
+   * @param {import("../PluggableMap.js").default} map Map.
+   * @param {import("../coordinate.js").Coordinate} [opt_coordinate] The pixel Coordinate.
    * @private
    */
-  handlePointerAtPixel_(pixel, map, coordinate) {
-    const pixelCoordinate = coordinate || map.getCoordinateFromPixel(pixel);
+  handlePointerAtPixel_(pixel, map, opt_coordinate) {
+    const pixelCoordinate = opt_coordinate || map.getCoordinateFromPixel(pixel);
     const projection = map.getView().getProjection();
     const sortByDistance = function (a, b) {
       return (
@@ -1174,7 +1174,6 @@ class Modify extends PointerInteraction {
 
     /** @type {Array<SegmentData>|undefined} */
     let nodes;
-    /** @type {Point|undefined} */
     let hitPointGeometry;
     if (this.hitDetection_) {
       const layerFilter =
@@ -1184,25 +1183,21 @@ class Modify extends PointerInteraction {
       map.forEachFeatureAtPixel(
         pixel,
         (feature, layer, geometry) => {
-          if (geometry) {
-            geometry = new Point(
-              toUserCoordinate(geometry.getCoordinates(), projection)
+          geometry =
+            geometry ||
+            /** @type {import("../geom/SimpleGeometry").default} */ (
+              feature.getGeometry()
             );
-          }
-          const geom = geometry || feature.getGeometry();
           if (
-            geom.getType() === 'Point' &&
-            feature instanceof Feature &&
-            this.features_.getArray().includes(feature)
+            geometry.getType() === 'Point' &&
+            includes(this.features_.getArray(), feature)
           ) {
-            hitPointGeometry = /** @type {Point} */ (geom);
-            const coordinate = /** @type {Point} */ (feature.getGeometry())
-              .getFlatCoordinates()
-              .slice(0, 2);
+            hitPointGeometry = geometry;
+            const coordinate = geometry.getFlatCoordinates().slice(0, 2);
             nodes = [
               {
                 feature,
-                geometry: hitPointGeometry,
+                geometry,
                 segment: [coordinate, coordinate],
               },
             ];

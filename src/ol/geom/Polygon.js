@@ -1,6 +1,7 @@
 /**
  * @module ol/geom/Polygon
  */
+import GeometryLayout from './GeometryLayout.js';
 import LinearRing from './LinearRing.js';
 import Point from './Point.js';
 import SimpleGeometry from './SimpleGeometry.js';
@@ -32,11 +33,11 @@ class Polygon extends SimpleGeometry {
    *     linear ring defines a hole in the surface of the polygon. A linear ring is
    *     an array of vertices' coordinates where the first coordinate and the last are
    *     equivalent. (For internal use, flat coordinates in combination with
-   *     `layout` and `ends` are also accepted.)
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
-   * @param {Array<number>} [ends] Ends (for internal use with flat coordinates).
+   *     `opt_layout` and `opt_ends` are also accepted.)
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
+   * @param {Array<number>} [opt_ends] Ends (for internal use with flat coordinates).
    */
-  constructor(coordinates, layout, ends) {
+  constructor(coordinates, opt_layout, opt_ends) {
     super();
 
     /**
@@ -81,18 +82,18 @@ class Polygon extends SimpleGeometry {
      */
     this.orientedFlatCoordinates_ = null;
 
-    if (layout !== undefined && ends) {
+    if (opt_layout !== undefined && opt_ends) {
       this.setFlatCoordinates(
-        layout,
+        opt_layout,
         /** @type {Array<number>} */ (coordinates)
       );
-      this.ends_ = ends;
+      this.ends_ = opt_ends;
     } else {
       this.setCoordinates(
         /** @type {Array<Array<import("../coordinate.js").Coordinate>>} */ (
           coordinates
         ),
-        layout
+        opt_layout
       );
     }
   }
@@ -198,7 +199,7 @@ class Polygon extends SimpleGeometry {
    * Get the coordinate array for this geometry.  This array has the structure
    * of a GeoJSON coordinate array for polygons.
    *
-   * @param {boolean} [right] Orient coordinates according to the right-hand
+   * @param {boolean} [opt_right] Orient coordinates according to the right-hand
    *     rule (counter-clockwise for exterior and clockwise for interior rings).
    *     If `false`, coordinates will be oriented according to the left-hand rule
    *     (clockwise for exterior and counter-clockwise for interior rings).
@@ -207,11 +208,11 @@ class Polygon extends SimpleGeometry {
    * @return {Array<Array<import("../coordinate.js").Coordinate>>} Coordinates.
    * @api
    */
-  getCoordinates(right) {
+  getCoordinates(opt_right) {
     let flatCoordinates;
-    if (right !== undefined) {
+    if (opt_right !== undefined) {
       flatCoordinates = this.getOrientedFlatCoordinates().slice();
-      orientLinearRings(flatCoordinates, 0, this.ends_, this.stride, right);
+      orientLinearRings(flatCoordinates, 0, this.ends_, this.stride, opt_right);
     } else {
       flatCoordinates = this.flatCoordinates;
     }
@@ -252,7 +253,7 @@ class Polygon extends SimpleGeometry {
    * @api
    */
   getInteriorPoint() {
-    return new Point(this.getFlatInteriorPoint(), 'XYM');
+    return new Point(this.getFlatInteriorPoint(), GeometryLayout.XYM);
   }
 
   /**
@@ -352,7 +353,11 @@ class Polygon extends SimpleGeometry {
       0,
       simplifiedEnds
     );
-    return new Polygon(simplifiedFlatCoordinates, 'XY', simplifiedEnds);
+    return new Polygon(
+      simplifiedFlatCoordinates,
+      GeometryLayout.XY,
+      simplifiedEnds
+    );
   }
 
   /**
@@ -383,11 +388,11 @@ class Polygon extends SimpleGeometry {
   /**
    * Set the coordinates of the polygon.
    * @param {!Array<Array<import("../coordinate.js").Coordinate>>} coordinates Coordinates.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    * @api
    */
-  setCoordinates(coordinates, layout) {
-    this.setLayout(layout, coordinates, 2);
+  setCoordinates(coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 2);
     if (!this.flatCoordinates) {
       this.flatCoordinates = [];
     }
@@ -410,25 +415,27 @@ export default Polygon;
  * @param {import("../coordinate.js").Coordinate} center Center (`[lon, lat]` in degrees).
  * @param {number} radius The great-circle distance from the center to
  *     the polygon vertices in meters.
- * @param {number} [n] Optional number of vertices for the resulting
+ * @param {number} [opt_n] Optional number of vertices for the resulting
  *     polygon. Default is `32`.
- * @param {number} [sphereRadius] Optional radius for the sphere (defaults to
+ * @param {number} [opt_sphereRadius] Optional radius for the sphere (defaults to
  *     the Earth's mean radius using the WGS84 ellipsoid).
  * @return {Polygon} The "circular" polygon.
  * @api
  */
-export function circular(center, radius, n, sphereRadius) {
-  n = n ? n : 32;
+export function circular(center, radius, opt_n, opt_sphereRadius) {
+  const n = opt_n ? opt_n : 32;
   /** @type {Array<number>} */
   const flatCoordinates = [];
   for (let i = 0; i < n; ++i) {
     extend(
       flatCoordinates,
-      sphereOffset(center, radius, (2 * Math.PI * i) / n, sphereRadius)
+      sphereOffset(center, radius, (2 * Math.PI * i) / n, opt_sphereRadius)
     );
   }
   flatCoordinates.push(flatCoordinates[0], flatCoordinates[1]);
-  return new Polygon(flatCoordinates, 'XY', [flatCoordinates.length]);
+  return new Polygon(flatCoordinates, GeometryLayout.XY, [
+    flatCoordinates.length,
+  ]);
 }
 
 /**
@@ -454,20 +461,22 @@ export function fromExtent(extent) {
     minX,
     minY,
   ];
-  return new Polygon(flatCoordinates, 'XY', [flatCoordinates.length]);
+  return new Polygon(flatCoordinates, GeometryLayout.XY, [
+    flatCoordinates.length,
+  ]);
 }
 
 /**
  * Create a regular polygon from a circle.
  * @param {import("./Circle.js").default} circle Circle geometry.
- * @param {number} [sides] Number of sides of the polygon. Default is 32.
- * @param {number} [angle] Start angle for the first vertex of the polygon in
+ * @param {number} [opt_sides] Number of sides of the polygon. Default is 32.
+ * @param {number} [opt_angle] Start angle for the first vertex of the polygon in
  *     counter-clockwise radians. 0 means East. Default is 0.
  * @return {Polygon} Polygon geometry.
  * @api
  */
-export function fromCircle(circle, sides, angle) {
-  sides = sides ? sides : 32;
+export function fromCircle(circle, opt_sides, opt_angle) {
+  const sides = opt_sides ? opt_sides : 32;
   const stride = circle.getStride();
   const layout = circle.getLayout();
   const center = circle.getCenter();
@@ -482,7 +491,7 @@ export function fromCircle(circle, sides, angle) {
   }
   const ends = [flatCoordinates.length];
   const polygon = new Polygon(flatCoordinates, layout, ends);
-  makeRegular(polygon, center, circle.getRadius(), angle);
+  makeRegular(polygon, center, circle.getRadius(), opt_angle);
   return polygon;
 }
 
@@ -491,14 +500,14 @@ export function fromCircle(circle, sides, angle) {
  * @param {Polygon} polygon Polygon geometry.
  * @param {import("../coordinate.js").Coordinate} center Center of the regular polygon.
  * @param {number} radius Radius of the regular polygon.
- * @param {number} [angle] Start angle for the first vertex of the polygon in
+ * @param {number} [opt_angle] Start angle for the first vertex of the polygon in
  *     counter-clockwise radians. 0 means East. Default is 0.
  */
-export function makeRegular(polygon, center, radius, angle) {
+export function makeRegular(polygon, center, radius, opt_angle) {
   const flatCoordinates = polygon.getFlatCoordinates();
   const stride = polygon.getStride();
   const sides = flatCoordinates.length / stride - 1;
-  const startAngle = angle ? angle : 0;
+  const startAngle = opt_angle ? opt_angle : 0;
   for (let i = 0; i <= sides; ++i) {
     const offset = i * stride;
     const angle = startAngle + (modulo(i, sides) * 2 * Math.PI) / sides;

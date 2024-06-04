@@ -44,11 +44,13 @@ for (variable in variables) {
   const value = variables[name];
   element.value = value.toString();
   document.getElementById(name + '-value').innerText = value.toFixed(2);
-  element.addEventListener('input', function (event) {
+  const listener = function (event) {
     const value = parseFloat(event.target.value);
     document.getElementById(name + '-value').innerText = value.toFixed(2);
     const updates = {};
     updates[name] = value;
     layer.updateStyleVariables(updates);
-  });
+  };
+  element.addEventListener('input', listener);
+  element.addEventListener('change', listener);
 }

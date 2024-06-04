@@ -48,7 +48,7 @@ function indexHandler(req, res) {
 function notFound(req, res) {
   return () => {
     // first, try the default directory
-    if (/^\/cases\/[^\/]+\/(index.html)?$/.test(req.url)) {
+    if (req.url.match(/^\/cases\/[^\/]+\/(index.html)?$/)) {
       // request for a case index file, and file not found, use default
       req.url = '/index.html';
       return defaultHandler(req, res, () => indexHandler(req, res));
@@ -66,7 +66,6 @@ function serve(options) {
 
   return new Promise((resolve, reject) => {
     const app = express();
-    app.use(serveStatic(path.join(baseDir, '..', '..', 'build', 'full')));
     app.use((req, res) => {
       if (req.url === '/favicon.ico') {
         res.writeHead(204);
@@ -240,7 +239,7 @@ async function renderEach(page, entries, options) {
 async function render(entries, options) {
   const browser = await puppeteer.launch({
     args: options.puppeteerArgs,
-    headless: options.headless ? 'new' : false,
+    headless: options.headless,
   });
 
   let fail = false;

@@ -17,12 +17,12 @@ import MapBrowserEventType from '../MapBrowserEventType.js';
  */
 class DoubleClickZoom extends Interaction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @private

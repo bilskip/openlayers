@@ -19,13 +19,13 @@ import {easeIn} from './easing.js';
  * error handling:
  *
  * ```js
- * import TileState from 'ol/TileState.js';
+ * import TileState from 'ol/TileState';
  *
  * source.setTileLoadFunction(function(tile, src) {
- *   const xhr = new XMLHttpRequest();
+ *   var xhr = new XMLHttpRequest();
  *   xhr.responseType = 'blob';
  *   xhr.addEventListener('loadend', function (evt) {
- *     const data = this.response;
+ *     var data = this.response;
  *     if (data !== undefined) {
  *       tile.getImage().src = URL.createObjectURL(data);
  *     } else {
@@ -78,12 +78,12 @@ class Tile extends EventTarget {
   /**
    * @param {import("./tilecoord.js").TileCoord} tileCoord Tile coordinate.
    * @param {import("./TileState.js").default} state State.
-   * @param {Options} [options] Tile options.
+   * @param {Options} [opt_options] Tile options.
    */
-  constructor(tileCoord, state, options) {
+  constructor(tileCoord, state, opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @type {import("./tilecoord.js").TileCoord}
@@ -142,12 +142,7 @@ class Tile extends EventTarget {
   /**
    * Called by the tile cache when the tile is removed from the cache due to expiry
    */
-  release() {
-    if (this.state === TileState.ERROR) {
-      // to remove the `change` listener on this tile in `ol/TileQueue#handleTileChange`
-      this.setState(TileState.EMPTY);
-    }
-  }
+  release() {}
 
   /**
    * @return {string} Key.

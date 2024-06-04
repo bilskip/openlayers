@@ -4,6 +4,7 @@ import Draw, {
   createRegularPolygon,
 } from '../../../../../src/ol/interaction/Draw.js';
 import Feature from '../../../../../src/ol/Feature.js';
+import GeometryLayout from '../../../../../src/ol/geom/GeometryLayout.js';
 import Interaction from '../../../../../src/ol/interaction/Interaction.js';
 import LineString from '../../../../../src/ol/geom/LineString.js';
 import Map from '../../../../../src/ol/Map.js';
@@ -32,21 +33,8 @@ import {listen} from '../../../../../src/ol/events.js';
 import {register} from '../../../../../src/ol/proj/proj4.js';
 import {unByKey} from '../../../../../src/ol/Observable.js';
 
-describe('ol/interaction/Draw', function () {
-  /**
-   * @type {VectorSource}
-   */
-  let source;
-
-  /**
-   * @type {Map}
-   */
-  let map;
-
-  /**
-   * @type {HTMLDivElement}
-   */
-  let target;
+describe('ol.interaction.Draw', function () {
+  let target, map, source;
 
   const width = 360;
   const height = 180;
@@ -146,78 +134,6 @@ describe('ol/interaction/Draw', function () {
       });
 
       expect(draw.freehandCondition_(event)).to.be(true);
-    });
-
-    describe('trace option', function () {
-      it('always goes in trace mode if true', function () {
-        const draw = new Draw({
-          source: source,
-          type: 'LineString',
-          trace: true,
-        });
-
-        const event = new MapBrowserEvent({
-          map: map,
-          type: 'pointerup',
-          originalEvent: new PointerEvent('pointerup', {
-            clientX: 0,
-            clientY: 0,
-          }),
-        });
-
-        expect(draw.traceCondition_(event)).to.be(true);
-      });
-
-      it('never goes in trace mode if false', function () {
-        const draw = new Draw({
-          source: source,
-          type: 'LineString',
-          trace: false,
-        });
-
-        const event = new MapBrowserEvent(
-          map,
-          'pointerup',
-          new PointerEvent('pointerup', {
-            clientX: 0,
-            clientY: 0,
-          })
-        );
-
-        expect(draw.traceCondition_(event)).to.be(false);
-      });
-
-      it('accepts a condition', function () {
-        const draw = new Draw({
-          source: source,
-          type: 'LineString',
-          trace: shiftKeyOnly,
-        });
-
-        const goodEvent = new MapBrowserEvent(
-          map,
-          'pointerup',
-          new PointerEvent('pointerup', {
-            clientX: 0,
-            clientY: 0,
-            shiftKey: true,
-          })
-        );
-
-        expect(draw.traceCondition_(goodEvent)).to.be(true);
-
-        const badEvent = new MapBrowserEvent(
-          map,
-          'pointerup',
-          new PointerEvent('pointerup', {
-            clientX: 0,
-            clientY: 0,
-            shiftKey: false,
-          })
-        );
-
-        expect(draw.traceCondition_(badEvent)).to.be(false);
-      });
     });
 
     it('accepts a dragVertexDelay option', function () {
@@ -1094,84 +1010,6 @@ describe('ol/interaction/Draw', function () {
       expect(function () {
         draw.finishDrawing();
       }).to.not.throwException();
-    });
-  });
-
-  describe('tracing polygons', function () {
-    let draw;
-
-    beforeEach(function () {
-      draw = new Draw({
-        source: source,
-        type: 'Polygon',
-        trace: true,
-      });
-      map.addInteraction(draw);
-    });
-
-    it('starts tracing with first edge click, stops tracing with second edge click', function () {
-      source.addFeatures([
-        new Feature(
-          new Polygon([
-            [
-              [0, -50],
-              [100, -50],
-              [100, -100],
-              [0, -100],
-              [0, -50],
-            ],
-          ])
-        ),
-      ]);
-
-      // first click adds a point
-      simulateEvent('pointermove', 50, 0);
-      simulateEvent('pointerdown', 50, 0);
-      simulateEvent('pointerup', 50, 0);
-      expect(draw.traceState_.active).to.be(false);
-      draw.shouldHandle_ = false;
-
-      // second click activates tracing (center of bottom edge)
-      simulateEvent('pointermove', 50, 50);
-      simulateEvent('pointerdown', 50, 50);
-      simulateEvent('pointerup', 50, 50);
-      expect(draw.traceState_.active).to.be(true);
-      expect(draw.traceState_.targetIndex).to.be(-1);
-      draw.shouldHandle_ = false;
-
-      // move to pick a target
-      simulateEvent('pointermove', 75, 10);
-      expect(draw.traceState_.active).to.be(true);
-      expect(draw.traceState_.targetIndex).to.be(0);
-      draw.shouldHandle_ = false;
-
-      // third click ends tracing (right half of top edge)
-      simulateEvent('pointermove', 75, 100);
-      simulateEvent('pointerdown', 75, 100);
-      simulateEvent('pointerup', 75, 100);
-      expect(draw.traceState_.active).to.be(false);
-      draw.shouldHandle_ = false;
-
-      // finish on first point
-      simulateEvent('pointermove', 50, 0);
-      simulateEvent('pointerdown', 50, 0);
-      simulateEvent('pointerup', 50, 0);
-
-      const features = source.getFeatures();
-      expect(features).to.have.length(2);
-      const geometry = features[1].getGeometry();
-      expect(geometry).to.be.a(Polygon);
-
-      expect(geometry.getCoordinates()).to.eql([
-        [
-          [50, 0],
-          [50, -50],
-          [100, -50], // traced point
-          [100, -100], // traced point
-          [75, -100],
-          [50, 0],
-        ],
-      ]);
     });
   });
 
@@ -2189,83 +2027,83 @@ describe('ol/interaction/Draw', function () {
     }
 
     it('respects XY layout for POINT type', function () {
-      drawPoint('XY');
+      drawPoint(GeometryLayout.XY);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([10, -20]);
-      expect(geometry.getLayout()).to.eql('XY');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XY);
     });
 
     it('respects XYZ layout for POINT type', function () {
-      drawPoint('XYZ');
+      drawPoint(GeometryLayout.XYZ);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([10, -20, 0]);
-      expect(geometry.getLayout()).to.eql('XYZ');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZ);
     });
 
     it('respects XYM layout for POINT type', function () {
-      drawPoint('XYM');
+      drawPoint(GeometryLayout.XYM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([10, -20, 0]);
-      expect(geometry.getLayout()).to.eql('XYM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYM);
     });
 
     it('respects XYZM layout for POINT type', function () {
-      drawPoint('XYZM');
+      drawPoint(GeometryLayout.XYZM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([10, -20, 0, 0]);
-      expect(geometry.getLayout()).to.eql('XYZM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZM);
     });
 
     it('respects XY layout for LINESTRING type', function () {
-      drawLineString('XY');
+      drawLineString(GeometryLayout.XY);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
         [10, -20],
         [30, -20],
       ]);
-      expect(geometry.getLayout()).to.eql('XY');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XY);
     });
 
     it('respects XYZ layout for LINESTRING type', function () {
-      drawLineString('XYZ');
+      drawLineString(GeometryLayout.XYZ);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
         [10, -20, 0],
         [30, -20, 0],
       ]);
-      expect(geometry.getLayout()).to.eql('XYZ');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZ);
     });
 
     it('respects XYM layout for LINESTRING type', function () {
-      drawLineString('XYM');
+      drawLineString(GeometryLayout.XYM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
         [10, -20, 0],
         [30, -20, 0],
       ]);
-      expect(geometry.getLayout()).to.eql('XYM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYM);
     });
 
     it('respects XYZM layout for LINESTRING type', function () {
-      drawLineString('XYZM');
+      drawLineString(GeometryLayout.XYZM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
         [10, -20, 0, 0],
         [30, -20, 0, 0],
       ]);
-      expect(geometry.getLayout()).to.eql('XYZM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZM);
     });
 
     it('respects XY layout for POLYGON type', function () {
-      drawPolygon('XY');
+      drawPolygon(GeometryLayout.XY);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
@@ -2276,11 +2114,11 @@ describe('ol/interaction/Draw', function () {
           [10, -20],
         ],
       ]);
-      expect(geometry.getLayout()).to.eql('XY');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XY);
     });
 
     it('respects XYZ layout for POLYGON type', function () {
-      drawPolygon('XYZ');
+      drawPolygon(GeometryLayout.XYZ);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
@@ -2291,11 +2129,11 @@ describe('ol/interaction/Draw', function () {
           [10, -20, 0],
         ],
       ]);
-      expect(geometry.getLayout()).to.eql('XYZ');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZ);
     });
 
     it('respects XYM layout for POLYGON type', function () {
-      drawPolygon('XYM');
+      drawPolygon(GeometryLayout.XYM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
@@ -2306,11 +2144,11 @@ describe('ol/interaction/Draw', function () {
           [10, -20, 0],
         ],
       ]);
-      expect(geometry.getLayout()).to.eql('XYM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYM);
     });
 
     it('respects XYZM layout for POLYGON type', function () {
-      drawPolygon('XYZM');
+      drawPolygon(GeometryLayout.XYZM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCoordinates()).to.eql([
@@ -2321,43 +2159,43 @@ describe('ol/interaction/Draw', function () {
           [10, -20, 0, 0],
         ],
       ]);
-      expect(geometry.getLayout()).to.eql('XYZM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZM);
     });
 
     it('respects XY layout for CIRCLE type', function () {
-      drawCircle('XY');
+      drawCircle(GeometryLayout.XY);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCenter()).to.eql([10, -20]);
       expect(geometry.getRadius()).to.eql(20);
-      expect(geometry.getLayout()).to.eql('XY');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XY);
     });
 
     it('respects XYZ layout for CIRCLE type', function () {
-      drawCircle('XYZ');
+      drawCircle(GeometryLayout.XYZ);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCenter()).to.eql([10, -20, 0]);
       expect(geometry.getRadius()).to.eql(20);
-      expect(geometry.getLayout()).to.eql('XYZ');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZ);
     });
 
     it('respects XYM layout for CIRCLE type', function () {
-      drawCircle('XYM');
+      drawCircle(GeometryLayout.XYM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCenter()).to.eql([10, -20, 0]);
       expect(geometry.getRadius()).to.eql(20);
-      expect(geometry.getLayout()).to.eql('XYM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYM);
     });
 
     it('respects XYZM layout for CIRCLE type', function () {
-      drawCircle('XYZM');
+      drawCircle(GeometryLayout.XYZM);
       const features = source.getFeatures();
       const geometry = features[0].getGeometry();
       expect(geometry.getCenter()).to.eql([10, -20, 0, 0]);
       expect(geometry.getRadius()).to.eql(20);
-      expect(geometry.getLayout()).to.eql('XYZM');
+      expect(geometry.getLayout()).to.eql(GeometryLayout.XYZM);
     });
   });
 });

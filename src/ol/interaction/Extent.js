@@ -94,10 +94,10 @@ export class ExtentEvent extends Event {
  */
 class Extent extends PointerInteraction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options || {};
+  constructor(opt_options) {
+    const options = opt_options || {};
 
     super(/** @type {import("./Pointer.js").Options} */ (options));
 
@@ -166,8 +166,8 @@ class Extent extends PointerInteraction {
      */
     this.vertexFeature_ = null;
 
-    if (!options) {
-      options = {};
+    if (!opt_options) {
+      opt_options = {};
     }
 
     /**
@@ -178,10 +178,10 @@ class Extent extends PointerInteraction {
     this.extentOverlay_ = new VectorLayer({
       source: new VectorSource({
         useSpatialIndex: false,
-        wrapX: !!options.wrapX,
+        wrapX: !!opt_options.wrapX,
       }),
-      style: options.boxStyle
-        ? options.boxStyle
+      style: opt_options.boxStyle
+        ? opt_options.boxStyle
         : getDefaultExtentStyleFunction(),
       updateWhileAnimating: true,
       updateWhileInteracting: true,
@@ -195,23 +195,23 @@ class Extent extends PointerInteraction {
     this.vertexOverlay_ = new VectorLayer({
       source: new VectorSource({
         useSpatialIndex: false,
-        wrapX: !!options.wrapX,
+        wrapX: !!opt_options.wrapX,
       }),
-      style: options.pointerStyle
-        ? options.pointerStyle
+      style: opt_options.pointerStyle
+        ? opt_options.pointerStyle
         : getDefaultPointerStyleFunction(),
       updateWhileAnimating: true,
       updateWhileInteracting: true,
     });
 
-    if (options.extent) {
-      this.setExtent(options.extent);
+    if (opt_options.extent) {
+      this.setExtent(opt_options.extent);
     }
   }
 
   /**
    * @param {import("../pixel.js").Pixel} pixel cursor location
-   * @param {import("../Map.js").default} map map
+   * @param {import("../PluggableMap.js").default} map map
    * @return {import("../coordinate.js").Coordinate|null} snapped vertex on extent
    * @private
    */
@@ -424,7 +424,7 @@ class Extent extends PointerInteraction {
    * Remove the interaction from its current map and attach it to the new map.
    * Subclasses may set up event handlers to get notified about changes to
    * the map here.
-   * @param {import("../Map.js").default} map Map.
+   * @param {import("../PluggableMap.js").default} map Map.
    */
   setMap(map) {
     this.extentOverlay_.setMap(map);
@@ -513,13 +513,13 @@ function getEdgeHandler(fixedP1, fixedP2) {
     return function (point) {
       return boundingExtent([fixedP1, [point[0], fixedP2[1]]]);
     };
-  }
-  if (fixedP1[1] == fixedP2[1]) {
+  } else if (fixedP1[1] == fixedP2[1]) {
     return function (point) {
       return boundingExtent([fixedP1, [fixedP2[0], point[1]]]);
     };
+  } else {
+    return null;
   }
-  return null;
 }
 
 /**

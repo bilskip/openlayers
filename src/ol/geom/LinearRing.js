@@ -1,6 +1,7 @@
 /**
  * @module ol/geom/LinearRing
  */
+import GeometryLayout from './GeometryLayout.js';
 import SimpleGeometry from './SimpleGeometry.js';
 import {assignClosestPoint, maxSquaredDelta} from './flat/closest.js';
 import {closestSquaredDistanceXY} from '../extent.js';
@@ -19,10 +20,10 @@ import {linearRing as linearRingArea} from './flat/area.js';
 class LinearRing extends SimpleGeometry {
   /**
    * @param {Array<import("../coordinate.js").Coordinate>|Array<number>} coordinates Coordinates.
-   *     For internal use, flat coordinates in combination with `layout` are also accepted.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   *     For internal use, flat coordinates in combination with `opt_layout` are also accepted.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    */
-  constructor(coordinates, layout) {
+  constructor(coordinates, opt_layout) {
     super();
 
     /**
@@ -37,9 +38,9 @@ class LinearRing extends SimpleGeometry {
      */
     this.maxDeltaRevision_ = -1;
 
-    if (layout !== undefined && !Array.isArray(coordinates[0])) {
+    if (opt_layout !== undefined && !Array.isArray(coordinates[0])) {
       this.setFlatCoordinates(
-        layout,
+        opt_layout,
         /** @type {Array<number>} */ (coordinates)
       );
     } else {
@@ -47,7 +48,7 @@ class LinearRing extends SimpleGeometry {
         /** @type {Array<import("../coordinate.js").Coordinate>} */ (
           coordinates
         ),
-        layout
+        opt_layout
       );
     }
   }
@@ -142,7 +143,7 @@ class LinearRing extends SimpleGeometry {
       simplifiedFlatCoordinates,
       0
     );
-    return new LinearRing(simplifiedFlatCoordinates, 'XY');
+    return new LinearRing(simplifiedFlatCoordinates, GeometryLayout.XY);
   }
 
   /**
@@ -167,11 +168,11 @@ class LinearRing extends SimpleGeometry {
   /**
    * Set the coordinates of the linear ring.
    * @param {!Array<import("../coordinate.js").Coordinate>} coordinates Coordinates.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    * @api
    */
-  setCoordinates(coordinates, layout) {
-    this.setLayout(layout, coordinates, 1);
+  setCoordinates(coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 1);
     if (!this.flatCoordinates) {
       this.flatCoordinates = [];
     }

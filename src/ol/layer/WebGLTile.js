@@ -14,6 +14,7 @@ import {
   getStringNumberEquivalent,
   uniformNameForVariable,
 } from '../style/expressions.js';
+import {assign} from '../obj.js';
 
 /**
  * @typedef {import("../source/DataTile.js").default|import("../source/TileImage.js").default} SourceType
@@ -68,7 +69,7 @@ import {
  * expects an extent and a resolution (in view projection units per pixel) and returns an array of sources. See
  * {@link module:ol/source.sourcesFromTileGrid} for a helper function to generate sources that are organized in a
  * pyramid following the same pattern as a tile grid. **Note:** All sources must have the same band count and content.
- * @property {import("../Map.js").default} [map] Sets the layer as overlay on a map. The map will not manage
+ * @property {import("../PluggableMap.js").default} [map] Sets the layer as overlay on a map. The map will not manage
  * this layer in its layers collection, and the layer will be rendered on top. This is useful for
  * temporary layers. The standard way to add a layer to a map and have it managed by the map is to
  * use {@link module:ol/Map~Map#addLayer}.
@@ -124,7 +125,6 @@ function parseStyle(style, bandCount) {
     stringLiteralsMap: {},
     functions: {},
     bandCount: bandCount,
-    style: style,
   };
 
   const pipeline = [];
@@ -203,13 +203,13 @@ function parseStyle(style, bandCount) {
   }
 
   for (let i = 0; i < numVariables; ++i) {
-    const variable = context.variables[i];
-    if (!(variable.name in style.variables)) {
-      throw new Error(`Missing '${variable.name}' in style variables`);
+    const variableName = context.variables[i];
+    if (!(variableName in style.variables)) {
+      throw new Error(`Missing '${variableName}' in style variables`);
     }
-    const uniformName = uniformNameForVariable(variable.name);
+    const uniformName = uniformNameForVariable(variableName);
     uniforms[uniformName] = function () {
-      let value = style.variables[variable.name];
+      let value = style.variables[variableName];
       if (typeof value === 'string') {
         value = getStringNumberEquivalent(context, value);
       }
@@ -305,10 +305,10 @@ function parseStyle(style, bandCount) {
  */
 class WebGLTileLayer extends BaseTileLayer {
   /**
-   * @param {Options} options Tile layer options.
+   * @param {Options} opt_options Tile layer options.
    */
-  constructor(options) {
-    options = options ? Object.assign({}, options) : {};
+  constructor(opt_options) {
+    const options = opt_options ? assign({}, opt_options) : {};
 
     const style = options.style || {};
     delete options.style;
@@ -393,9 +393,6 @@ class WebGLTileLayer extends BaseTileLayer {
    * @private
    */
   handleSourceUpdate_() {
-    if (this.hasRenderer()) {
-      this.getRenderer().clearCache();
-    }
     if (this.getSource()) {
       this.setStyle(this.style_);
     }
@@ -426,7 +423,7 @@ class WebGLTileLayer extends BaseTileLayer {
   }
 
   /**
-   * @param {import("../Map").FrameState} frameState Frame state.
+   * @param {import("../PluggableMap").FrameState} frameState Frame state.
    * @param {Array<SourceType>} sources Sources.
    * @return {HTMLElement} Canvas.
    */
@@ -443,7 +440,7 @@ class WebGLTileLayer extends BaseTileLayer {
   }
 
   /**
-   * @param {?import("../Map.js").FrameState} frameState Frame state.
+   * @param {?import("../PluggableMap.js").FrameState} frameState Frame state.
    * @param {HTMLElement} target Target which the renderer may (but need not) use
    * for rendering its content.
    * @return {HTMLElement} The rendered element.
@@ -503,6 +500,7 @@ class WebGLTileLayer extends BaseTileLayer {
       vertexShader: parsedStyle.vertexShader,
       fragmentShader: parsedStyle.fragmentShader,
       uniforms: parsedStyle.uniforms,
+      paletteTextures: parsedStyle.paletteTextures,
     });
     this.changed();
   }
@@ -513,7 +511,7 @@ class WebGLTileLayer extends BaseTileLayer {
    * @api
    */
   updateStyleVariables(variables) {
-    Object.assign(this.styleVariables_, variables);
+    assign(this.styleVariables_, variables);
     this.changed();
   }
 }

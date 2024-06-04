@@ -16,7 +16,7 @@ import {assert} from '../asserts.js';
 import {containsExtent, equals, wrapAndSliceX} from '../extent.js';
 import {extend} from '../array.js';
 import {getUid} from '../util.js';
-import {isEmpty} from '../obj.js';
+import {getValues, isEmpty} from '../obj.js';
 import {listen, unlistenByKey} from '../events.js';
 import {xhr} from '../featureloader.js';
 
@@ -38,10 +38,10 @@ import {xhr} from '../featureloader.js';
 export class VectorSourceEvent extends Event {
   /**
    * @param {string} type Type.
-   * @param {import("../Feature.js").default<Geometry>} [feature] Feature.
-   * @param {Array<import("../Feature.js").default<Geometry>>} [features] Features.
+   * @param {import("../Feature.js").default<Geometry>} [opt_feature] Feature.
+   * @param {Array<import("../Feature.js").default<Geometry>>} [opt_features] Features.
    */
-  constructor(type, feature, features) {
+  constructor(type, opt_feature, opt_features) {
     super(type);
 
     /**
@@ -49,14 +49,14 @@ export class VectorSourceEvent extends Event {
      * @type {import("../Feature.js").default<Geometry>|undefined}
      * @api
      */
-    this.feature = feature;
+    this.feature = opt_feature;
 
     /**
      * The loaded features for the `FEATURESLOADED` event, `undefined` otherwise.
      * @type {Array<import("../Feature.js").default<Geometry>>|undefined}
      * @api
      */
-    this.features = features;
+    this.features = opt_features;
   }
 }
 
@@ -70,10 +70,9 @@ export class VectorSourceEvent extends Event {
  */
 
 /**
- * @template {import("../geom/Geometry.js").default} [Geometry=import("../geom/Geometry.js").default]
  * @typedef {Object} Options
  * @property {import("./Source.js").AttributionLike} [attributions] Attributions.
- * @property {Array<import("../Feature.js").default<Geometry>>|Collection<import("../Feature.js").default<Geometry>>} [features]
+ * @property {Array<import("../Feature.js").default>|Collection<import("../Feature.js").default>} [features]
  * Features. If provided as {@link module:ol/Collection~Collection}, the features in the source
  * and the collection will stay in sync.
  * @property {import("../format/Feature.js").default} [format] The feature format used by the XHR
@@ -87,28 +86,28 @@ export class VectorSourceEvent extends Event {
  * Example:
  *
  * ```js
- * import Vector from 'ol/source/Vector.js';
- * import GeoJSON from 'ol/format/GeoJSON.js';
- * import {bbox} from 'ol/loadingstrategy.js';
+ * import {Vector} from 'ol/source';
+ * import {GeoJSON} from 'ol/format';
+ * import {bbox} from 'ol/loadingstrategy';
  *
- * const vectorSource = new Vector({
+ * var vectorSource = new Vector({
  *   format: new GeoJSON(),
  *   loader: function(extent, resolution, projection, success, failure) {
- *      const proj = projection.getCode();
- *      const url = 'https://ahocevar.com/geoserver/wfs?service=WFS&' +
+ *      var proj = projection.getCode();
+ *      var url = 'https://ahocevar.com/geoserver/wfs?service=WFS&' +
  *          'version=1.1.0&request=GetFeature&typename=osm:water_areas&' +
  *          'outputFormat=application/json&srsname=' + proj + '&' +
  *          'bbox=' + extent.join(',') + ',' + proj;
- *      const xhr = new XMLHttpRequest();
+ *      var xhr = new XMLHttpRequest();
  *      xhr.open('GET', url);
- *      const onError = function() {
+ *      var onError = function() {
  *        vectorSource.removeLoadedExtent(extent);
  *        failure();
  *      }
  *      xhr.onerror = onError;
  *      xhr.onload = function() {
  *        if (xhr.status == 200) {
- *          const features = vectorSource.getFormat().readFeatures(xhr.responseText);
+ *          var features = vectorSource.getFormat().readFeatures(xhr.responseText);
  *          vectorSource.addFeatures(features);
  *          success(features);
  *        } else {
@@ -117,7 +116,7 @@ export class VectorSourceEvent extends Event {
  *      }
  *      xhr.send();
  *    },
- *    strategy: bbox,
+ *    strategy: bbox
  *  });
  * ```
  * @property {boolean} [overlaps=true] This source may have overlapping geometries.
@@ -174,10 +173,10 @@ export class VectorSourceEvent extends Event {
  */
 class VectorSource extends Source {
   /**
-   * @param {Options<Geometry>} [options] Vector source options.
+   * @param {Options} [opt_options] Vector source options.
    */
-  constructor(options) {
-    options = options || {};
+  constructor(opt_options) {
+    const options = opt_options || {};
 
     super({
       attributions: options.attributions,
@@ -297,14 +296,17 @@ class VectorSource extends Source {
      */
     this.featuresCollection_ = null;
 
-    /** @type {Collection<import("../Feature.js").default<Geometry>>} */
-    let collection;
-    /** @type {Array<import("../Feature.js").default<Geometry>>} */
-    let features;
+    let collection, features;
     if (Array.isArray(options.features)) {
-      features = options.features;
+      features =
+        /** @type {Array<import("../Feature.js").default<Geometry>>} */ (
+          options.features
+        );
     } else if (options.features) {
-      collection = options.features;
+      collection =
+        /** @type {Collection<import("../Feature.js").default<Geometry>>} */ (
+          options.features
+        );
       features = collection.getArray();
     }
     if (!useSpatialIndex && collection === undefined) {
@@ -498,39 +500,47 @@ class VectorSource extends Source {
     collection.addEventListener(
       CollectionEventType.ADD,
       /**
-       * @param {import("../Collection.js").CollectionEvent<import("../Feature.js").default<Geometry>>} evt The collection event
+       * @param {import("../Collection.js").CollectionEvent} evt The collection event
        */
-      (evt) => {
+      function (evt) {
         if (!modifyingCollection) {
           modifyingCollection = true;
-          this.addFeature(evt.element);
+          this.addFeature(
+            /** @type {import("../Feature.js").default<Geometry>} */ (
+              evt.element
+            )
+          );
           modifyingCollection = false;
         }
-      }
+      }.bind(this)
     );
     collection.addEventListener(
       CollectionEventType.REMOVE,
       /**
-       * @param {import("../Collection.js").CollectionEvent<import("../Feature.js").default<Geometry>>} evt The collection event
+       * @param {import("../Collection.js").CollectionEvent} evt The collection event
        */
-      (evt) => {
+      function (evt) {
         if (!modifyingCollection) {
           modifyingCollection = true;
-          this.removeFeature(evt.element);
+          this.removeFeature(
+            /** @type {import("../Feature.js").default<Geometry>} */ (
+              evt.element
+            )
+          );
           modifyingCollection = false;
         }
-      }
+      }.bind(this)
     );
     this.featuresCollection_ = collection;
   }
 
   /**
    * Remove all features from the source.
-   * @param {boolean} [fast] Skip dispatching of {@link module:ol/source/Vector.VectorSourceEvent#event:removefeature} events.
+   * @param {boolean} [opt_fast] Skip dispatching of {@link module:ol/source/Vector.VectorSourceEvent#event:removefeature removefeature} events.
    * @api
    */
-  clear(fast) {
-    if (fast) {
+  clear(opt_fast) {
+    if (opt_fast) {
       for (const featureId in this.featureChangeKeys_) {
         const keys = this.featureChangeKeys_[featureId];
         keys.forEach(unlistenByKey);
@@ -542,9 +552,9 @@ class VectorSource extends Source {
       }
     } else {
       if (this.featuresRtree_) {
-        const removeAndIgnoreReturn = (feature) => {
+        const removeAndIgnoreReturn = function (feature) {
           this.removeFeatureInternal(feature);
-        };
+        }.bind(this);
         this.featuresRtree_.forEach(removeAndIgnoreReturn);
         for (const id in this.nullGeometryFeatures_) {
           this.removeFeatureInternal(this.nullGeometryFeatures_[id]);
@@ -580,8 +590,7 @@ class VectorSource extends Source {
   forEachFeature(callback) {
     if (this.featuresRtree_) {
       return this.featuresRtree_.forEach(callback);
-    }
-    if (this.featuresCollection_) {
+    } else if (this.featuresCollection_) {
       this.featuresCollection_.forEach(callback);
     }
   }
@@ -604,8 +613,9 @@ class VectorSource extends Source {
       const geometry = feature.getGeometry();
       if (geometry.intersectsCoordinate(coordinate)) {
         return callback(feature);
+      } else {
+        return undefined;
       }
-      return undefined;
     });
   }
 
@@ -631,8 +641,7 @@ class VectorSource extends Source {
   forEachFeatureInExtent(extent, callback) {
     if (this.featuresRtree_) {
       return this.featuresRtree_.forEachInExtent(extent, callback);
-    }
-    if (this.featuresCollection_) {
+    } else if (this.featuresCollection_) {
       this.featuresCollection_.forEach(callback);
     }
   }
@@ -695,7 +704,7 @@ class VectorSource extends Source {
     } else if (this.featuresRtree_) {
       features = this.featuresRtree_.getAll();
       if (!isEmpty(this.nullGeometryFeatures_)) {
-        extend(features, Object.values(this.nullGeometryFeatures_));
+        extend(features, getValues(this.nullGeometryFeatures_));
       }
     }
     return /** @type {Array<import("../Feature.js").default<Geometry>>} */ (
@@ -726,29 +735,30 @@ class VectorSource extends Source {
    * features.
    *
    * @param {import("../extent.js").Extent} extent Extent.
-   * @param {import("../proj/Projection.js").default} [projection] Include features
+   * @param {import("../proj/Projection.js").default} [opt_projection] Include features
    * where `extent` exceeds the x-axis bounds of `projection` and wraps around the world.
    * @return {Array<import("../Feature.js").default<Geometry>>} Features.
    * @api
    */
-  getFeaturesInExtent(extent, projection) {
+  getFeaturesInExtent(extent, opt_projection) {
     if (this.featuresRtree_) {
-      const multiWorld = projection && projection.canWrapX() && this.getWrapX();
+      const multiWorld =
+        opt_projection && opt_projection.canWrapX() && this.getWrapX();
 
       if (!multiWorld) {
         return this.featuresRtree_.getInExtent(extent);
       }
 
-      const extents = wrapAndSliceX(extent, projection);
+      const extents = wrapAndSliceX(extent, opt_projection);
 
       return [].concat(
         ...extents.map((anExtent) => this.featuresRtree_.getInExtent(anExtent))
       );
-    }
-    if (this.featuresCollection_) {
+    } else if (this.featuresCollection_) {
       return this.featuresCollection_.getArray().slice(0);
+    } else {
+      return [];
     }
-    return [];
   }
 
   /**
@@ -757,13 +767,13 @@ class VectorSource extends Source {
    * This method is not available when the source is configured with
    * `useSpatialIndex` set to `false`.
    * @param {import("../coordinate.js").Coordinate} coordinate Coordinate.
-   * @param {function(import("../Feature.js").default<Geometry>):boolean} [filter] Feature filter function.
+   * @param {function(import("../Feature.js").default<Geometry>):boolean} [opt_filter] Feature filter function.
    *     The filter function will receive one argument, the {@link module:ol/Feature~Feature feature}
    *     and it should return a boolean value. By default, no filtering is made.
    * @return {import("../Feature.js").default<Geometry>} Closest feature.
    * @api
    */
-  getClosestFeatureToCoordinate(coordinate, filter) {
+  getClosestFeatureToCoordinate(coordinate, opt_filter) {
     // Find the closest feature using branch and bound.  We start searching an
     // infinite extent, and find the distance from the first feature found.  This
     // becomes the closest feature.  We then compute a smaller extent which any
@@ -777,7 +787,7 @@ class VectorSource extends Source {
     const closestPoint = [NaN, NaN];
     let minSquaredDistance = Infinity;
     const extent = [-Infinity, -Infinity, Infinity, Infinity];
-    filter = filter ? filter : TRUE;
+    const filter = opt_filter ? opt_filter : TRUE;
     this.featuresRtree_.forEachInExtent(
       extent,
       /**
@@ -816,13 +826,13 @@ class VectorSource extends Source {
    *
    * This method is not available when the source is configured with
    * `useSpatialIndex` set to `false`.
-   * @param {import("../extent.js").Extent} [extent] Destination extent. If provided, no new extent
+   * @param {import("../extent.js").Extent} [opt_extent] Destination extent. If provided, no new extent
    *     will be created. Instead, that extent's coordinates will be overwritten.
    * @return {import("../extent.js").Extent} Extent.
    * @api
    */
-  getExtent(extent) {
-    return this.featuresRtree_.getExtent(extent);
+  getExtent(opt_extent) {
+    return this.featuresRtree_.getExtent(opt_extent);
   }
 
   /**
@@ -934,8 +944,9 @@ class VectorSource extends Source {
     const id = feature.getId();
     if (id !== undefined) {
       return id in this.idIndex_;
+    } else {
+      return getUid(feature) in this.uidIndex_;
     }
-    return getUid(feature) in this.uidIndex_;
   }
 
   /**
@@ -983,7 +994,7 @@ class VectorSource extends Source {
           extentToLoad,
           resolution,
           projection,
-          (features) => {
+          function (features) {
             --this.loadingExtentsCount_;
             this.dispatchEvent(
               new VectorSourceEvent(
@@ -992,13 +1003,13 @@ class VectorSource extends Source {
                 features
               )
             );
-          },
-          () => {
+          }.bind(this),
+          function () {
             --this.loadingExtentsCount_;
             this.dispatchEvent(
               new VectorSourceEvent(VectorEventType.FEATURESLOADERROR)
             );
-          }
+          }.bind(this)
         );
         loadedExtentsRtree.insert(extentToLoad, {extent: extentToLoad.slice()});
       }

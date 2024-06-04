@@ -258,7 +258,6 @@ class ImageStyle {
   setRotation(rotation) {
     this.rotation_ = rotation;
   }
-
   /**
    * Set the scale.
    *

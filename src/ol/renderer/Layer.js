@@ -40,7 +40,7 @@ class LayerRenderer extends Observable {
   /**
    * Asynchronous layer level hit detection.
    * @param {import("../pixel.js").Pixel} pixel Pixel.
-   * @return {Promise<Array<import("../Feature").FeatureLike>>} Promise that resolves with
+   * @return {Promise<Array<import("../Feature").default>>} Promise that resolves with
    * an array of features.
    */
   getFeatures(pixel) {
@@ -58,7 +58,7 @@ class LayerRenderer extends Observable {
   /**
    * Determine whether render should be called.
    * @abstract
-   * @param {import("../Map.js").FrameState} frameState Frame state.
+   * @param {import("../PluggableMap.js").FrameState} frameState Frame state.
    * @return {boolean} Layer is ready to be rendered.
    */
   prepareFrame(frameState) {
@@ -68,7 +68,7 @@ class LayerRenderer extends Observable {
   /**
    * Render the layer.
    * @abstract
-   * @param {import("../Map.js").FrameState} frameState Frame state.
+   * @param {import("../PluggableMap.js").FrameState} frameState Frame state.
    * @param {HTMLElement} target Target that may be used to render content to.
    * @return {HTMLElement} The rendered element.
    */
@@ -105,17 +105,18 @@ class LayerRenderer extends Observable {
        * @param {number} zoom Zoom level.
        * @param {import("../TileRange.js").default} tileRange Tile range.
        * @return {boolean} The tile range is fully loaded.
+       * @this {LayerRenderer}
        */
-      (zoom, tileRange) => {
+      function (zoom, tileRange) {
         const callback = this.loadedTileCallback.bind(this, tiles, zoom);
         return source.forEachLoadedTile(projection, zoom, tileRange, callback);
-      }
+      }.bind(this)
     );
   }
   /**
    * @abstract
    * @param {import("../coordinate.js").Coordinate} coordinate Coordinate.
-   * @param {import("../Map.js").FrameState} frameState Frame state.
+   * @param {import("../PluggableMap.js").FrameState} frameState Frame state.
    * @param {number} hitTolerance Hit tolerance in pixels.
    * @param {import("./vector.js").FeatureCallback<T>} callback Feature callback.
    * @param {Array<import("./Map.js").HitMatch<T>>} matches The hit detected matches with tolerance.
@@ -130,6 +131,19 @@ class LayerRenderer extends Observable {
     matches
   ) {
     return undefined;
+  }
+
+  /**
+   * @abstract
+   * @param {import("../pixel.js").Pixel} pixel Pixel.
+   * @param {import("../PluggableMap.js").FrameState} frameState FrameState.
+   * @param {number} hitTolerance Hit tolerance in pixels.
+   * @return {Uint8ClampedArray|Uint8Array} The result.  If there is no data at the pixel
+   *    location, null will be returned.  If there is data, but pixel values cannot be
+   *    returned, and empty array will be returned.
+   */
+  getDataAtPixel(pixel, frameState, hitTolerance) {
+    return null;
   }
 
   /**
@@ -152,10 +166,7 @@ class LayerRenderer extends Observable {
    */
   handleImageChange_(event) {
     const image = /** @type {import("../Image.js").default} */ (event.target);
-    if (
-      image.getState() === ImageState.LOADED ||
-      image.getState() === ImageState.ERROR
-    ) {
+    if (image.getState() === ImageState.LOADED) {
       this.renderIfReadyAndVisible();
     }
   }

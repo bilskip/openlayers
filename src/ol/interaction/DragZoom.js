@@ -31,10 +31,10 @@ import {shiftKeyOnly} from '../events/condition.js';
  */
 class DragZoom extends DragBox {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     const condition = options.condition ? options.condition : shiftKeyOnly;
 

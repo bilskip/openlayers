@@ -3,6 +3,7 @@
  */
 import BaseEvent from './events/Event.js';
 import BaseObject from './Object.js';
+import EventType from './events/EventType.js';
 import {circular as circularPolygon} from './geom/Polygon.js';
 import {
   get as getProjection,
@@ -28,39 +29,23 @@ const Property = {
 };
 
 /**
- * @enum string
- */
-const GeolocationErrorType = {
-  /**
-   * Triggered when a `GeolocationPositionError` occurs.
-   * @event module:ol/Geolocation.GeolocationError#error
-   * @api
-   */
-  ERROR: 'error',
-};
-
-/**
  * @classdesc
- * Events emitted on [GeolocationPositionError](https://developer.mozilla.org/en-US/docs/Web/API/GeolocationPositionError).
+ * Events emitted on Geolocation error.
  */
-export class GeolocationError extends BaseEvent {
+class GeolocationError extends BaseEvent {
   /**
    * @param {GeolocationPositionError} error error object.
    */
   constructor(error) {
-    super(GeolocationErrorType.ERROR);
+    super(EventType.ERROR);
 
     /**
-     * Code of the underlying `GeolocationPositionError`.
      * @type {number}
-     * @api
      */
     this.code = error.code;
 
     /**
-     * Message of the underlying `GeolocationPositionError`.
      * @type {string}
-     * @api
      */
     this.message = error.message;
   }
@@ -84,10 +69,11 @@ export class GeolocationError extends BaseEvent {
 
 /***
  * @template Return
- * @typedef {import("./Observable").OnSignature<GeolocationObjectEventTypes, import("./Object").ObjectEvent, Return> &
+ * @typedef {import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return> &
+ *   import("./Observable").OnSignature<GeolocationObjectEventTypes, import("./Object").ObjectEvent, Return> &
  *   import("./Observable").OnSignature<'error', GeolocationError, Return> &
- *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|GeolocationObjectEventTypes, Return> &
- *   import("./Observable").OnSignature<import("./Observable").EventTypes, import("./events/Event.js").default, Return>} GeolocationOnSignature
+ *   import("./Observable").CombinedOnSignature<import("./Observable").EventTypes|GeolocationObjectEventTypes|
+ *     'error', Return>} GeolocationOnSignature
  */
 
 /**
@@ -96,32 +82,28 @@ export class GeolocationError extends BaseEvent {
  * The [Geolocation API](https://www.w3.org/TR/geolocation-API/)
  * is used to locate a user's position.
  *
- * To get notified of position changes and errors, register listeners for the generic
- * `change` event and the `error` event on your instance of {@link module:ol/Geolocation~Geolocation}.
+ * To get notified of position changes, register a listener for the generic
+ * `change` event on your instance of {@link module:ol/Geolocation~Geolocation}.
  *
  * Example:
  *
- *     const geolocation = new Geolocation({
+ *     var geolocation = new Geolocation({
  *       // take the projection to use from the map's view
  *       projection: view.getProjection()
  *     });
  *     // listen to changes in position
  *     geolocation.on('change', function(evt) {
- *       console.log(geolocation.getPosition());
- *     });
- *     // listen to error
- *     geolocation.on('error', function(evt) {
- *       window.console.log(evt.message);
+ *       window.console.log(geolocation.getPosition());
  *     });
  *
- * @fires GeolocationError
+ * @fires module:ol/events/Event~BaseEvent#event:error
  * @api
  */
 class Geolocation extends BaseObject {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
     /***
@@ -139,7 +121,7 @@ class Geolocation extends BaseObject {
      */
     this.un;
 
-    options = options || {};
+    const options = opt_options || {};
 
     /**
      * The unprojected (EPSG:4326) device position.
@@ -242,7 +224,7 @@ class Geolocation extends BaseObject {
       this.position_[1] = coords.latitude;
     }
     const projectedPosition = this.transform_(this.position_);
-    this.set(Property.POSITION, projectedPosition.slice());
+    this.set(Property.POSITION, projectedPosition);
     this.set(Property.SPEED, coords.speed === null ? undefined : coords.speed);
     const geometry = circularPolygon(this.position_, coords.accuracy);
     geometry.applyTransform(this.transform_);

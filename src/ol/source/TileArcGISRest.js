@@ -4,6 +4,7 @@
 
 import TileImage from './TileImage.js';
 import {appendParams} from '../uri.js';
+import {assign} from '../obj.js';
 import {createEmpty} from '../extent.js';
 import {modulo} from '../math.js';
 import {scale as scaleSize, toSize} from '../size.js';
@@ -16,6 +17,7 @@ import {hash as tileCoordHash} from '../tilecoord.js';
  * @property {null|string} [crossOrigin] The `crossOrigin` attribute for loaded images.  Note that
  * you must provide a `crossOrigin` value if you want to access pixel data with the Canvas renderer.
  * See https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image for more detail.
+ * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
  * @property {Object<string,*>} [params] ArcGIS Rest parameters. This field is optional. Service defaults will be
@@ -67,16 +69,22 @@ import {hash as tileCoordHash} from '../tilecoord.js';
  */
 class TileArcGISRest extends TileImage {
   /**
-   * @param {Options} [options] Tile ArcGIS Rest options.
+   * @param {Options} [opt_options] Tile ArcGIS Rest options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
+
+    let interpolate =
+      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
+    if (options.interpolate !== undefined) {
+      interpolate = options.interpolate;
+    }
 
     super({
       attributions: options.attributions,
       cacheSize: options.cacheSize,
       crossOrigin: options.crossOrigin,
-      interpolate: options.interpolate,
+      interpolate: interpolate,
       projection: options.projection,
       reprojectionErrorThreshold: options.reprojectionErrorThreshold,
       tileGrid: options.tileGrid,
@@ -200,7 +208,7 @@ class TileArcGISRest extends TileImage {
    * @api
    */
   updateParams(params) {
-    Object.assign(this.params_, params);
+    assign(this.params_, params);
     this.setKey(this.getKeyForParams_());
   }
 
@@ -238,7 +246,7 @@ class TileArcGISRest extends TileImage {
       'FORMAT': 'PNG32',
       'TRANSPARENT': true,
     };
-    Object.assign(baseParams, this.params_);
+    assign(baseParams, this.params_);
 
     return this.getRequestUrl_(
       tileCoord,

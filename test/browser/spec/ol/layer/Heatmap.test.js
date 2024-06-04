@@ -96,7 +96,7 @@ describe('ol/layer/Heatmap', function () {
 
       const renderer = layer.getRenderer();
       renderer.worker_.addEventListener('message', function (event) {
-        if (!renderer.renderInstructions_) {
+        if (!renderer.hitRenderInstructions_) {
           return;
         }
         map.renderSync();

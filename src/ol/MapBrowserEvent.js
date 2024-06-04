@@ -6,20 +6,27 @@ import MapEvent from './MapEvent.js';
 /**
  * @classdesc
  * Events emitted as map browser events are instances of this type.
- * See {@link module:ol/Map~Map} for which events trigger a map browser event.
+ * See {@link module:ol/PluggableMap~PluggableMap} for which events trigger a map browser event.
  * @template {UIEvent} EVENT
  */
 class MapBrowserEvent extends MapEvent {
   /**
    * @param {string} type Event type.
-   * @param {import("./Map.js").default} map Map.
+   * @param {import("./PluggableMap.js").default} map Map.
    * @param {EVENT} originalEvent Original event.
-   * @param {boolean} [dragging] Is the map currently being dragged?
-   * @param {import("./Map.js").FrameState} [frameState] Frame state.
-   * @param {Array<PointerEvent>} [activePointers] Active pointers.
+   * @param {boolean} [opt_dragging] Is the map currently being dragged?
+   * @param {import("./PluggableMap.js").FrameState} [opt_frameState] Frame state.
+   * @param {Array<PointerEvent>} [opt_activePointers] Active pointers.
    */
-  constructor(type, map, originalEvent, dragging, frameState, activePointers) {
-    super(type, map, frameState);
+  constructor(
+    type,
+    map,
+    originalEvent,
+    opt_dragging,
+    opt_frameState,
+    opt_activePointers
+  ) {
+    super(type, map, opt_frameState);
 
     /**
      * The original browser event.
@@ -48,12 +55,12 @@ class MapBrowserEvent extends MapEvent {
      * @type {boolean}
      * @api
      */
-    this.dragging = dragging !== undefined ? dragging : false;
+    this.dragging = opt_dragging !== undefined ? opt_dragging : false;
 
     /**
      * @type {Array<PointerEvent>|undefined}
      */
-    this.activePointers = activePointers;
+    this.activePointers = opt_activePointers;
   }
 
   /**

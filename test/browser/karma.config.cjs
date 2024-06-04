@@ -4,13 +4,7 @@ const path = require('path');
 
 module.exports = function (karma) {
   karma.set({
-    browsers: ['ChromeHeadlessLauncher'],
-    customLaunchers: {
-      ChromeHeadlessLauncher: {
-        base: 'Chrome',
-        flags: ['--headless=new'],
-      },
-    },
+    browsers: ['ChromeHeadless'],
     browserDisconnectTolerance: 2,
     frameworks: ['webpack', 'mocha', 'source-map-support'],
     client: {
@@ -84,6 +78,17 @@ module.exports = function (karma) {
             test: /\.js$/,
             enforce: 'pre',
             use: ['source-map-loader'],
+          },
+          {
+            test: /\.js$/,
+            use: {
+              loader: 'babel-loader',
+              options: {
+                presets: ['@babel/preset-env'],
+              },
+            },
+            include: path.resolve('src/ol/'),
+            exclude: path.resolve('node_modules/'),
           },
           {
             test: /\.js$/,

@@ -5,7 +5,6 @@ import TileLayer from '../../../../src/ol/layer/WebGLTile.js';
 const source = new GeoTIFF({
   convertToRGB: true,
   sources: [{url: '/data/raster/non-square-pixels.tif'}],
-  transition: 0,
 });
 
 new Map({
@@ -13,7 +12,6 @@ new Map({
   layers: [new TileLayer({source})],
   view: source.getView().then((config) => ({
     ...config,
-    zoom: 0,
     rotation: Math.PI / 6,
   })),
 });

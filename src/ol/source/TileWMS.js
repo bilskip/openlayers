@@ -6,6 +6,7 @@ import TileImage from './TileImage.js';
 import {DEFAULT_VERSION} from './wms.js';
 import {appendParams} from '../uri.js';
 import {assert} from '../asserts.js';
+import {assign} from '../obj.js';
 import {buffer, createEmpty} from '../extent.js';
 import {buffer as bufferSize, scale as scaleSize, toSize} from '../size.js';
 import {calculateSourceResolution} from '../reproj.js';
@@ -22,6 +23,7 @@ import {hash as tileCoordHash} from '../tilecoord.js';
  * @property {null|string} [crossOrigin] The `crossOrigin` attribute for loaded images.  Note that
  * you must provide a `crossOrigin` value if you want to access pixel data with the Canvas renderer.
  * See https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image for more detail.
+ * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
  * @property {Object<string,*>} params WMS request parameters.
@@ -79,12 +81,18 @@ import {hash as tileCoordHash} from '../tilecoord.js';
  */
 class TileWMS extends TileImage {
   /**
-   * @param {Options} [options] Tile WMS options.
+   * @param {Options} [opt_options] Tile WMS options.
    */
-  constructor(options) {
-    options = options ? options : /** @type {Options} */ ({});
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : /** @type {Options} */ ({});
 
-    const params = Object.assign({}, options.params);
+    let interpolate =
+      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
+    if (options.interpolate !== undefined) {
+      interpolate = options.interpolate;
+    }
+
+    const params = options.params || {};
 
     const transparent = 'TRANSPARENT' in params ? params['TRANSPARENT'] : true;
 
@@ -93,7 +101,7 @@ class TileWMS extends TileImage {
       attributionsCollapsible: options.attributionsCollapsible,
       cacheSize: options.cacheSize,
       crossOrigin: options.crossOrigin,
-      interpolate: options.interpolate,
+      interpolate: interpolate,
       opaque: !transparent,
       projection: options.projection,
       reprojectionErrorThreshold: options.reprojectionErrorThreshold,
@@ -210,7 +218,7 @@ class TileWMS extends TileImage {
       'TRANSPARENT': true,
       'QUERY_LAYERS': this.params_['LAYERS'],
     };
-    Object.assign(baseParams, this.params_, params);
+    assign(baseParams, this.params_, params);
 
     const x = Math.floor((coordinate[0] - tileExtent[0]) / tileResolution);
     const y = Math.floor((tileExtent[3] - coordinate[1]) / tileResolution);
@@ -271,7 +279,7 @@ class TileWMS extends TileImage {
       baseParams['SCALE'] = (resolution * mpu) / pixelSize;
     }
 
-    Object.assign(baseParams, params);
+    assign(baseParams, params);
 
     return appendParams(/** @type {string} */ (this.urls[0]), baseParams);
   }
@@ -399,7 +407,7 @@ class TileWMS extends TileImage {
    * @api
    */
   updateParams(params) {
-    Object.assign(this.params_, params);
+    assign(this.params_, params);
     this.updateV13_();
     this.setKey(this.getKeyForParams_());
   }
@@ -454,7 +462,7 @@ class TileWMS extends TileImage {
       'FORMAT': 'image/png',
       'TRANSPARENT': true,
     };
-    Object.assign(baseParams, this.params_);
+    assign(baseParams, this.params_);
 
     return this.getRequestUrl_(
       tileCoord,

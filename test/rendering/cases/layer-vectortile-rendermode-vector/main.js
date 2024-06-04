@@ -1,6 +1,7 @@
 import MVT from '../../../../src/ol/format/MVT.js';
 import Map from '../../../../src/ol/Map.js';
 import VectorTileLayer from '../../../../src/ol/layer/VectorTile.js';
+import VectorTileRenderType from '../../../../src/ol/layer/VectorTileRenderType.js';
 import VectorTileSource from '../../../../src/ol/source/VectorTile.js';
 import View from '../../../../src/ol/View.js';
 import {createXYZ} from '../../../../src/ol/tilegrid.js';
@@ -8,7 +9,7 @@ import {createXYZ} from '../../../../src/ol/tilegrid.js';
 new Map({
   layers: [
     new VectorTileLayer({
-      renderMode: 'vector',
+      renderMode: VectorTileRenderType.VECTOR,
       source: new VectorTileSource({
         format: new MVT(),
         tileGrid: createXYZ(),

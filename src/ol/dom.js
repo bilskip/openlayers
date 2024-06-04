@@ -7,31 +7,36 @@ import {WORKER_OFFSCREEN_CANVAS} from './has.js';
 //FIXME Move this function to the canvas module
 /**
  * Create an html canvas element and returns its 2d context.
- * @param {number} [width] Canvas width.
- * @param {number} [height] Canvas height.
- * @param {Array<HTMLCanvasElement>} [canvasPool] Canvas pool to take existing canvas from.
- * @param {CanvasRenderingContext2DSettings} [settings] CanvasRenderingContext2DSettings
+ * @param {number} [opt_width] Canvas width.
+ * @param {number} [opt_height] Canvas height.
+ * @param {Array<HTMLCanvasElement>} [opt_canvasPool] Canvas pool to take existing canvas from.
+ * @param {CanvasRenderingContext2DSettings} [opt_Context2DSettings] CanvasRenderingContext2DSettings
  * @return {CanvasRenderingContext2D} The context.
  */
-export function createCanvasContext2D(width, height, canvasPool, settings) {
+export function createCanvasContext2D(
+  opt_width,
+  opt_height,
+  opt_canvasPool,
+  opt_Context2DSettings
+) {
   /** @type {HTMLCanvasElement|OffscreenCanvas} */
   let canvas;
-  if (canvasPool && canvasPool.length) {
-    canvas = canvasPool.shift();
+  if (opt_canvasPool && opt_canvasPool.length) {
+    canvas = opt_canvasPool.shift();
   } else if (WORKER_OFFSCREEN_CANVAS) {
-    canvas = new OffscreenCanvas(width || 300, height || 300);
+    canvas = new OffscreenCanvas(opt_width || 300, opt_height || 300);
   } else {
     canvas = document.createElement('canvas');
   }
-  if (width) {
-    canvas.width = width;
+  if (opt_width) {
+    canvas.width = opt_width;
   }
-  if (height) {
-    canvas.height = height;
+  if (opt_height) {
+    canvas.height = opt_height;
   }
   //FIXME Allow OffscreenCanvasRenderingContext2D as return type
   return /** @type {CanvasRenderingContext2D} */ (
-    canvas.getContext('2d', settings)
+    canvas.getContext('2d', opt_Context2DSettings)
   );
 }
 

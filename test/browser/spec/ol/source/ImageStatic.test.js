@@ -23,6 +23,11 @@ describe('ol/source/ImageStatic', function () {
       const source = new Static({interpolate: false});
       expect(source.getInterpolate()).to.be(false);
     });
+
+    it('is false if constructed with imageSmoothing: false', function () {
+      const source = new Static({imageSmoothing: false});
+      expect(source.getInterpolate()).to.be(false);
+    });
   });
 
   describe('#getImage', function () {

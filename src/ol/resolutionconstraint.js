@@ -64,41 +64,41 @@ function getSmoothClampedResolution(resolution, maxResolution, minResolution) {
 
 /**
  * @param {Array<number>} resolutions Resolutions.
- * @param {boolean} [smooth] If true, the view will be able to slightly exceed resolution limits. Default: true.
- * @param {import("./extent.js").Extent} [maxExtent] Maximum allowed extent.
- * @param {boolean} [showFullExtent] If true, allows us to show the full extent. Default: false.
+ * @param {boolean} [opt_smooth] If true, the view will be able to slightly exceed resolution limits. Default: true.
+ * @param {import("./extent.js").Extent} [opt_maxExtent] Maximum allowed extent.
+ * @param {boolean} [opt_showFullExtent] If true, allows us to show the full extent. Default: false.
  * @return {Type} Zoom function.
  */
 export function createSnapToResolutions(
   resolutions,
-  smooth,
-  maxExtent,
-  showFullExtent
+  opt_smooth,
+  opt_maxExtent,
+  opt_showFullExtent
 ) {
-  smooth = smooth !== undefined ? smooth : true;
   return (
     /**
      * @param {number|undefined} resolution Resolution.
      * @param {number} direction Direction.
      * @param {import("./size.js").Size} size Viewport size.
-     * @param {boolean} [isMoving] True if an interaction or animation is in progress.
+     * @param {boolean} [opt_isMoving] True if an interaction or animation is in progress.
      * @return {number|undefined} Resolution.
      */
-    function (resolution, direction, size, isMoving) {
+    function (resolution, direction, size, opt_isMoving) {
       if (resolution !== undefined) {
         const maxResolution = resolutions[0];
         const minResolution = resolutions[resolutions.length - 1];
-        const cappedMaxRes = maxExtent
+        const cappedMaxRes = opt_maxExtent
           ? getViewportClampedResolution(
               maxResolution,
-              maxExtent,
+              opt_maxExtent,
               size,
-              showFullExtent
+              opt_showFullExtent
             )
           : maxResolution;
 
         // during interacting or animating, allow intermediary values
-        if (isMoving) {
+        if (opt_isMoving) {
+          const smooth = opt_smooth !== undefined ? opt_smooth : true;
           if (!smooth) {
             return clamp(resolution, minResolution, cappedMaxRes);
           }
@@ -115,8 +115,9 @@ export function createSnapToResolutions(
           return resolutions[z + 1];
         }
         return resolutions[z];
+      } else {
+        return undefined;
       }
-      return undefined;
     }
   );
 }
@@ -124,44 +125,44 @@ export function createSnapToResolutions(
 /**
  * @param {number} power Power.
  * @param {number} maxResolution Maximum resolution.
- * @param {number} [minResolution] Minimum resolution.
- * @param {boolean} [smooth] If true, the view will be able to slightly exceed resolution limits. Default: true.
- * @param {import("./extent.js").Extent} [maxExtent] Maximum allowed extent.
- * @param {boolean} [showFullExtent] If true, allows us to show the full extent. Default: false.
+ * @param {number} [opt_minResolution] Minimum resolution.
+ * @param {boolean} [opt_smooth] If true, the view will be able to slightly exceed resolution limits. Default: true.
+ * @param {import("./extent.js").Extent} [opt_maxExtent] Maximum allowed extent.
+ * @param {boolean} [opt_showFullExtent] If true, allows us to show the full extent. Default: false.
  * @return {Type} Zoom function.
  */
 export function createSnapToPower(
   power,
   maxResolution,
-  minResolution,
-  smooth,
-  maxExtent,
-  showFullExtent
+  opt_minResolution,
+  opt_smooth,
+  opt_maxExtent,
+  opt_showFullExtent
 ) {
-  smooth = smooth !== undefined ? smooth : true;
-  minResolution = minResolution !== undefined ? minResolution : 0;
-
   return (
     /**
      * @param {number|undefined} resolution Resolution.
      * @param {number} direction Direction.
      * @param {import("./size.js").Size} size Viewport size.
-     * @param {boolean} [isMoving] True if an interaction or animation is in progress.
+     * @param {boolean} [opt_isMoving] True if an interaction or animation is in progress.
      * @return {number|undefined} Resolution.
      */
-    function (resolution, direction, size, isMoving) {
+    function (resolution, direction, size, opt_isMoving) {
       if (resolution !== undefined) {
-        const cappedMaxRes = maxExtent
+        const cappedMaxRes = opt_maxExtent
           ? getViewportClampedResolution(
               maxResolution,
-              maxExtent,
+              opt_maxExtent,
               size,
-              showFullExtent
+              opt_showFullExtent
             )
           : maxResolution;
+        const minResolution =
+          opt_minResolution !== undefined ? opt_minResolution : 0;
 
         // during interacting or animating, allow intermediary values
-        if (isMoving) {
+        if (opt_isMoving) {
+          const smooth = opt_smooth !== undefined ? opt_smooth : true;
           if (!smooth) {
             return clamp(resolution, minResolution, cappedMaxRes);
           }
@@ -184,8 +185,9 @@ export function createSnapToPower(
         const zoomLevel = Math.max(minZoomLevel, cappedZoomLevel);
         const newResolution = maxResolution / Math.pow(power, zoomLevel);
         return clamp(newResolution, minResolution, cappedMaxRes);
+      } else {
+        return undefined;
       }
-      return undefined;
     }
   );
 }
@@ -193,40 +195,39 @@ export function createSnapToPower(
 /**
  * @param {number} maxResolution Max resolution.
  * @param {number} minResolution Min resolution.
- * @param {boolean} [smooth] If true, the view will be able to slightly exceed resolution limits. Default: true.
- * @param {import("./extent.js").Extent} [maxExtent] Maximum allowed extent.
- * @param {boolean} [showFullExtent] If true, allows us to show the full extent. Default: false.
+ * @param {boolean} [opt_smooth] If true, the view will be able to slightly exceed resolution limits. Default: true.
+ * @param {import("./extent.js").Extent} [opt_maxExtent] Maximum allowed extent.
+ * @param {boolean} [opt_showFullExtent] If true, allows us to show the full extent. Default: false.
  * @return {Type} Zoom function.
  */
 export function createMinMaxResolution(
   maxResolution,
   minResolution,
-  smooth,
-  maxExtent,
-  showFullExtent
+  opt_smooth,
+  opt_maxExtent,
+  opt_showFullExtent
 ) {
-  smooth = smooth !== undefined ? smooth : true;
-
   return (
     /**
      * @param {number|undefined} resolution Resolution.
      * @param {number} direction Direction.
      * @param {import("./size.js").Size} size Viewport size.
-     * @param {boolean} [isMoving] True if an interaction or animation is in progress.
+     * @param {boolean} [opt_isMoving] True if an interaction or animation is in progress.
      * @return {number|undefined} Resolution.
      */
-    function (resolution, direction, size, isMoving) {
+    function (resolution, direction, size, opt_isMoving) {
       if (resolution !== undefined) {
-        const cappedMaxRes = maxExtent
+        const cappedMaxRes = opt_maxExtent
           ? getViewportClampedResolution(
               maxResolution,
-              maxExtent,
+              opt_maxExtent,
               size,
-              showFullExtent
+              opt_showFullExtent
             )
           : maxResolution;
+        const smooth = opt_smooth !== undefined ? opt_smooth : true;
 
-        if (!smooth || !isMoving) {
+        if (!smooth || !opt_isMoving) {
           return clamp(resolution, minResolution, cappedMaxRes);
         }
         return getSmoothClampedResolution(
@@ -234,8 +235,9 @@ export function createMinMaxResolution(
           cappedMaxRes,
           minResolution
         );
+      } else {
+        return undefined;
       }
-      return undefined;
     }
   );
 }

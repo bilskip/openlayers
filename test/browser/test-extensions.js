@@ -1,6 +1,5 @@
-import {setLevel as setLogLevel} from '../../src/ol/console.js';
-
-setLogLevel('error');
+// avoid importing anything that results in an instanceof check
+// since these extensions are global, instanceof checks fail with modules
 
 (function (global) {
   function afterLoad(type, path, next) {
@@ -88,29 +87,30 @@ setLogLevel('error');
     // check whitespace
     if (options && options.includeWhiteSpace) {
       return node.childNodes;
-    }
-    const nodes = [];
-    for (let i = 0, ii = node.childNodes.length; i < ii; i++) {
-      const child = node.childNodes[i];
-      if (child.nodeType == 1) {
-        // element node, add it
-        nodes.push(child);
-      } else if (child.nodeType == 3) {
-        // text node, add if non empty
-        if (
-          child.nodeValue &&
-          child.nodeValue.replace(/^\s*(.*?)\s*$/, '$1') !== ''
-        ) {
+    } else {
+      const nodes = [];
+      for (let i = 0, ii = node.childNodes.length; i < ii; i++) {
+        const child = node.childNodes[i];
+        if (child.nodeType == 1) {
+          // element node, add it
           nodes.push(child);
+        } else if (child.nodeType == 3) {
+          // text node, add if non empty
+          if (
+            child.nodeValue &&
+            child.nodeValue.replace(/^\s*(.*?)\s*$/, '$1') !== ''
+          ) {
+            nodes.push(child);
+          }
         }
       }
+      if (options && options.ignoreElementOrder) {
+        nodes.sort(function (a, b) {
+          return a.nodeName > b.nodeName ? 1 : a.nodeName < b.nodeName ? -1 : 0;
+        });
+      }
+      return nodes;
     }
-    if (options && options.ignoreElementOrder) {
-      nodes.sort(function (a, b) {
-        return a.nodeName > b.nodeName ? 1 : a.nodeName < b.nodeName ? -1 : 0;
-      });
-    }
-    return nodes;
   }
 
   function assertElementNodesEqual(node1, node2, options, errors) {
@@ -246,7 +246,14 @@ setLogLevel('error');
           break;
         }
         // test attribute namespace
-        if (node1Attr[name].namespaceURI !== node2Attr[name].namespaceURI) {
+        // we do not care about the difference between an empty string and
+        // null for namespaceURI some tests will fail in IE9 otherwise
+        // see also
+        // https://docs.microsoft.com/en-us/openspecs/ie_standards/ms-dom2c/d6ad7f24-25f4-4ab0-a36b-32ddc08f413c
+        if (
+          (node1Attr[name].namespaceURI || null) !==
+          (node2Attr[name].namespaceURI || null)
+        ) {
           errors.push(
             'namespaceURI attribute test failed for: ' +
               node1.nodeName +

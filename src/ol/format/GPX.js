@@ -2,6 +2,7 @@
  * @module ol/format/GPX
  */
 import Feature from '../Feature.js';
+import GeometryLayout from '../geom/GeometryLayout.js';
 import LineString from '../geom/LineString.js';
 import MultiLineString from '../geom/MultiLineString.js';
 import Point from '../geom/Point.js';
@@ -22,6 +23,7 @@ import {
   pushSerializeAndPop,
 } from '../xml.js';
 import {get as getProjection} from '../proj.js';
+import {includes} from '../array.js';
 import {
   readDateTime,
   readDecimal,
@@ -128,12 +130,12 @@ const GPX_SERIALIZERS = makeStructureNS(NAMESPACE_URIS, {
  */
 class GPX extends XMLFeature {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @type {import("../proj/Projection.js").default}
@@ -167,18 +169,20 @@ class GPX extends XMLFeature {
 
   /**
    * @param {Element} node Node.
-   * @param {import("./Feature.js").ReadOptions} [options] Options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Options.
    * @return {import("../Feature.js").default} Feature.
    */
-  readFeatureFromNode(node, options) {
-    if (!NAMESPACE_URIS.includes(node.namespaceURI)) {
+  readFeatureFromNode(node, opt_options) {
+    if (!includes(NAMESPACE_URIS, node.namespaceURI)) {
       return null;
     }
     const featureReader = FEATURE_READER[node.localName];
     if (!featureReader) {
       return null;
     }
-    const feature = featureReader(node, [this.getReadOptions(node, options)]);
+    const feature = featureReader(node, [
+      this.getReadOptions(node, opt_options),
+    ]);
     if (!feature) {
       return null;
     }
@@ -188,23 +192,24 @@ class GPX extends XMLFeature {
 
   /**
    * @param {Element} node Node.
-   * @param {import("./Feature.js").ReadOptions} [options] Options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Options.
    * @return {Array<import("../Feature.js").default>} Features.
    */
-  readFeaturesFromNode(node, options) {
-    if (!NAMESPACE_URIS.includes(node.namespaceURI)) {
+  readFeaturesFromNode(node, opt_options) {
+    if (!includes(NAMESPACE_URIS, node.namespaceURI)) {
       return [];
     }
     if (node.localName == 'gpx') {
       /** @type {Array<Feature>} */
       const features = pushParseAndPop([], GPX_PARSERS, node, [
-        this.getReadOptions(node, options),
+        this.getReadOptions(node, opt_options),
       ]);
       if (features) {
         this.handleReadExtensions_(features);
         return features;
+      } else {
+        return [];
       }
-      return [];
     }
     return [];
   }
@@ -215,12 +220,12 @@ class GPX extends XMLFeature {
    * as tracks (`<trk>`).
    *
    * @param {Array<Feature>} features Features.
-   * @param {import("./Feature.js").WriteOptions} [options] Options.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Options.
    * @return {Node} Node.
    * @api
    */
-  writeFeaturesNode(features, options) {
-    options = this.adaptOptions(options);
+  writeFeaturesNode(features, opt_options) {
+    opt_options = this.adaptOptions(opt_options);
     //FIXME Serialize metadata
     const gpx = createElementNS('http://www.topografix.com/GPX/1/1', 'gpx');
     const xmlnsUri = 'http://www.w3.org/2000/xmlns/';
@@ -239,7 +244,7 @@ class GPX extends XMLFeature {
       GPX_SERIALIZERS,
       GPX_NODE_FACTORY,
       features,
-      [options]
+      [opt_options]
     );
     return gpx;
   }
@@ -502,10 +507,10 @@ const GEOMETRY_TYPE_TO_NODENAME = {
 /**
  * @param {*} value Value.
  * @param {Array<*>} objectStack Object stack.
- * @param {string} [nodeName] Node name.
+ * @param {string} [opt_nodeName] Node name.
  * @return {Node|undefined} Node.
  */
-function GPX_NODE_FACTORY(value, objectStack, nodeName) {
+function GPX_NODE_FACTORY(value, objectStack, opt_nodeName) {
   const geometry = /** @type {Feature} */ (value).getGeometry();
   if (geometry) {
     const nodeName = GEOMETRY_TYPE_TO_NODENAME[geometry.getType()];
@@ -552,20 +557,19 @@ function appendCoordinate(flatCoordinates, layoutOptions, node, values) {
  * @param {LayoutOptions} layoutOptions Layout options.
  * @param {Array<number>} flatCoordinates Flat coordinates.
  * @param {Array<number>} [ends] Ends.
- * @return {import("../geom/Geometry.js").GeometryLayout} Layout.
+ * @return {import("../geom/GeometryLayout.js").default} Layout.
  */
 function applyLayoutOptions(layoutOptions, flatCoordinates, ends) {
-  /** @type {import("../geom/Geometry.js").GeometryLayout} */
-  let layout = 'XY';
+  let layout = GeometryLayout.XY;
   let stride = 2;
   if (layoutOptions.hasZ && layoutOptions.hasM) {
-    layout = 'XYZM';
+    layout = GeometryLayout.XYZM;
     stride = 4;
   } else if (layoutOptions.hasZ) {
-    layout = 'XYZ';
+    layout = GeometryLayout.XYZ;
     stride = 3;
   } else if (layoutOptions.hasM) {
-    layout = 'XYM';
+    layout = GeometryLayout.XYM;
     stride = 3;
   }
   if (stride !== 4) {
@@ -796,17 +800,17 @@ function writeWptType(node, coordinate, objectStack) {
   node.setAttributeNS(null, 'lon', String(coordinate[0]));
   const geometryLayout = context['geometryLayout'];
   switch (geometryLayout) {
-    case 'XYZM':
+    case GeometryLayout.XYZM:
       if (coordinate[3] !== 0) {
         properties['time'] = coordinate[3];
       }
     // fall through
-    case 'XYZ':
+    case GeometryLayout.XYZ:
       if (coordinate[2] !== 0) {
         properties['ele'] = coordinate[2];
       }
       break;
-    case 'XYM':
+    case GeometryLayout.XYM:
       if (coordinate[2] !== 0) {
         properties['time'] = coordinate[2];
       }

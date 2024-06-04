@@ -36,7 +36,7 @@ import {squaredDistance, squaredSegmentDistance} from '../../math.js';
  * @param {number} stride Stride.
  * @param {number} squaredTolerance Squared tolerance.
  * @param {boolean} highQuality Highest quality.
- * @param {Array<number>} [simplifiedFlatCoordinates] Simplified flat
+ * @param {Array<number>} [opt_simplifiedFlatCoordinates] Simplified flat
  *     coordinates.
  * @return {Array<number>} Simplified line string.
  */
@@ -47,10 +47,12 @@ export function simplifyLineString(
   stride,
   squaredTolerance,
   highQuality,
-  simplifiedFlatCoordinates
+  opt_simplifiedFlatCoordinates
 ) {
-  simplifiedFlatCoordinates =
-    simplifiedFlatCoordinates !== undefined ? simplifiedFlatCoordinates : [];
+  const simplifiedFlatCoordinates =
+    opt_simplifiedFlatCoordinates !== undefined
+      ? opt_simplifiedFlatCoordinates
+      : [];
   if (!highQuality) {
     end = radialDistance(
       flatCoordinates,

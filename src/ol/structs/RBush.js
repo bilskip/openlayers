@@ -24,13 +24,13 @@ import {isEmpty} from '../obj.js';
  */
 class RBush {
   /**
-   * @param {number} [maxEntries] Max entries.
+   * @param {number} [opt_maxEntries] Max entries.
    */
-  constructor(maxEntries) {
+  constructor(opt_maxEntries) {
     /**
      * @private
      */
-    this.rbush_ = new RBush_(maxEntries);
+    this.rbush_ = new RBush_(opt_maxEntries);
 
     /**
      * A mapping between the objects added to this rbush wrapper
@@ -198,12 +198,18 @@ class RBush {
   }
 
   /**
-   * @param {import("../extent.js").Extent} [extent] Extent.
+   * @param {import("../extent.js").Extent} [opt_extent] Extent.
    * @return {import("../extent.js").Extent} Extent.
    */
-  getExtent(extent) {
+  getExtent(opt_extent) {
     const data = this.rbush_.toJSON();
-    return createOrUpdate(data.minX, data.minY, data.maxX, data.maxY, extent);
+    return createOrUpdate(
+      data.minX,
+      data.minY,
+      data.maxX,
+      data.maxY,
+      opt_extent
+    );
   }
 
   /**

@@ -5,13 +5,6 @@ import LRUCache from './structs/LRUCache.js';
 import {fromKey, getKey} from './tilecoord.js';
 
 class TileCache extends LRUCache {
-  clear() {
-    while (this.getCount() > 0) {
-      this.pop().release();
-    }
-    super.clear();
-  }
-
   /**
    * @param {!Object<string, boolean>} usedTiles Used tiles.
    */
@@ -36,12 +29,14 @@ class TileCache extends LRUCache {
     const key = this.peekFirstKey();
     const tileCoord = fromKey(key);
     const z = tileCoord[0];
-    this.forEach((tile) => {
-      if (tile.tileCoord[0] !== z) {
-        this.remove(getKey(tile.tileCoord));
-        tile.release();
-      }
-    });
+    this.forEach(
+      function (tile) {
+        if (tile.tileCoord[0] !== z) {
+          this.remove(getKey(tile.tileCoord));
+          tile.release();
+        }
+      }.bind(this)
+    );
   }
 }
 

@@ -115,7 +115,7 @@ class Cluster extends VectorSource {
       options.geometryFunction ||
       function (feature) {
         const geometry = /** @type {Point} */ (feature.getGeometry());
-        assert(!geometry || geometry.getType() === 'Point', 10); // The default `geometryFunction` can only handle `Point` or null geometries
+        assert(geometry.getType() == 'Point', 10); // The default `geometryFunction` can only handle `Point` geometries
         return geometry;
       };
 
@@ -142,12 +142,12 @@ class Cluster extends VectorSource {
 
   /**
    * Remove all features from the source.
-   * @param {boolean} [fast] Skip dispatching of {@link module:ol/source/VectorEventType~VectorEventType#removefeature} events.
+   * @param {boolean} [opt_fast] Skip dispatching of {@link module:ol/source/VectorEventType~VectorEventType#removefeature} events.
    * @api
    */
-  clear(fast) {
+  clear(opt_fast) {
     this.features.length = 0;
-    super.clear(fast);
+    super.clear(opt_fast);
   }
 
   /**
@@ -316,11 +316,12 @@ class Cluster extends VectorSource {
     ]);
     if (this.createCustomCluster_) {
       return this.createCustomCluster_(geometry, features);
+    } else {
+      return new Feature({
+        geometry,
+        features,
+      });
     }
-    return new Feature({
-      geometry,
-      features,
-    });
   }
 }
 

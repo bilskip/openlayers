@@ -3,7 +3,6 @@
  */
 import TileImage from './TileImage.js';
 import {getTileSetInfo} from './ogcTileUtil.js';
-import {error as logError} from '../console.js';
 
 /**
  * @typedef {Object} Options
@@ -20,6 +19,7 @@ import {error as logError} from '../console.js';
  * @property {null|string} [crossOrigin] The `crossOrigin` attribute for loaded images.  Note that
  * you must provide a `crossOrigin` value if you want to access pixel data with the Canvas renderer.
  * See https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image for more detail.
+ * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
  * @property {number} [reprojectionErrorThreshold=0.5] Maximum allowed reprojection error (in pixels).
@@ -40,18 +40,23 @@ import {error as logError} from '../console.js';
  * Layer source for map tiles from an [OGC API - Tiles](https://ogcapi.ogc.org/tiles/) service that provides "map" type tiles.
  * The service must conform to at least the core (http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/core)
  * and tileset (http://www.opengis.net/spec/ogcapi-tiles-1/1.0/conf/tileset) conformance classes.
- * @api
  */
 class OGCMapTile extends TileImage {
   /**
    * @param {Options} options OGC map tile options.
    */
   constructor(options) {
+    let interpolate =
+      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
+    if (options.interpolate !== undefined) {
+      interpolate = options.interpolate;
+    }
+
     super({
       attributions: options.attributions,
       cacheSize: options.cacheSize,
       crossOrigin: options.crossOrigin,
-      interpolate: options.interpolate,
+      interpolate: interpolate,
       projection: options.projection,
       reprojectionErrorThreshold: options.reprojectionErrorThreshold,
       state: 'loading',
@@ -87,7 +92,7 @@ class OGCMapTile extends TileImage {
    * @param {Error} error The error.
    */
   handleError_(error) {
-    logError(error);
+    console.error(error); // eslint-disable-line no-console
     this.setState('error');
   }
 }

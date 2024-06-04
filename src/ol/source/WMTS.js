@@ -4,10 +4,12 @@
 
 import TileImage from './TileImage.js';
 import {appendParams} from '../uri.js';
+import {assign} from '../obj.js';
 import {containsExtent} from '../extent.js';
 import {createFromCapabilitiesMatrixSet} from '../tilegrid/WMTS.js';
 import {createFromTileUrlFunctions, expandUrl} from '../tileurlfunction.js';
 import {equivalent, get as getProjection, transformExtent} from '../proj.js';
+import {find, findIndex, includes} from '../array.js';
 
 /**
  * Request encoding. One of 'KVP', 'REST'.
@@ -22,6 +24,7 @@ import {equivalent, get as getProjection, transformExtent} from '../proj.js';
  * @property {null|string} [crossOrigin] The `crossOrigin` attribute for loaded images.  Note that
  * you must provide a `crossOrigin` value if you want to access pixel data with the Canvas renderer.
  * See https://developer.mozilla.org/en-US/docs/Web/HTML/CORS_enabled_image for more detail.
+ * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
  * @property {import("../tilegrid/WMTS.js").default} tileGrid Tile grid.
@@ -72,6 +75,12 @@ class WMTS extends TileImage {
    * @param {Options} options WMTS options.
    */
   constructor(options) {
+    let interpolate =
+      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
+    if (options.interpolate !== undefined) {
+      interpolate = options.interpolate;
+    }
+
     // TODO: add support for TileMatrixLimits
 
     const requestEncoding =
@@ -91,7 +100,7 @@ class WMTS extends TileImage {
       attributionsCollapsible: options.attributionsCollapsible,
       cacheSize: options.cacheSize,
       crossOrigin: options.crossOrigin,
-      interpolate: options.interpolate,
+      interpolate: interpolate,
       projection: options.projection,
       reprojectionErrorThreshold: options.reprojectionErrorThreshold,
       tileClass: options.tileClass,
@@ -245,9 +254,10 @@ class WMTS extends TileImage {
    * @return {string} The key for the current dimensions.
    */
   getKeyForDimensions_() {
-    const res = this.urls ? this.urls.slice(0) : [];
+    let i = 0;
+    const res = [];
     for (const key in this.dimensions_) {
-      res.push(key + '-' + this.dimensions_[key]);
+      res[i++] = key + '-' + this.dimensions_[key];
     }
     return res.join('/');
   }
@@ -258,7 +268,7 @@ class WMTS extends TileImage {
    * @api
    */
   updateDimensions(dimensions) {
-    Object.assign(this.dimensions_, dimensions);
+    assign(this.dimensions_, dimensions);
     this.setKey(this.getKeyForDimensions_());
   }
 
@@ -278,7 +288,7 @@ class WMTS extends TileImage {
     };
 
     if (requestEncoding == 'KVP') {
-      Object.assign(context, {
+      assign(context, {
         'Service': 'WMTS',
         'Request': 'GetTile',
         'Version': this.version_,
@@ -312,22 +322,23 @@ class WMTS extends TileImage {
       function (tileCoord, pixelRatio, projection) {
         if (!tileCoord) {
           return undefined;
-        }
-        const localContext = {
-          'TileMatrix': tileGrid.getMatrixId(tileCoord[0]),
-          'TileCol': tileCoord[1],
-          'TileRow': tileCoord[2],
-        };
-        Object.assign(localContext, dimensions);
-        let url = template;
-        if (requestEncoding == 'KVP') {
-          url = appendParams(url, localContext);
         } else {
-          url = url.replace(/\{(\w+?)\}/g, function (m, p) {
-            return localContext[p];
-          });
+          const localContext = {
+            'TileMatrix': tileGrid.getMatrixId(tileCoord[0]),
+            'TileCol': tileCoord[1],
+            'TileRow': tileCoord[2],
+          };
+          assign(localContext, dimensions);
+          let url = template;
+          if (requestEncoding == 'KVP') {
+            url = appendParams(url, localContext);
+          } else {
+            url = url.replace(/\{(\w+?)\}/g, function (m, p) {
+              return localContext[p];
+            });
+          }
+          return url;
         }
-        return url;
       }
     );
   }
@@ -361,18 +372,18 @@ export default WMTS;
  */
 export function optionsFromCapabilities(wmtsCap, config) {
   const layers = wmtsCap['Contents']['Layer'];
-  const l = layers.find(function (elt) {
+  const l = find(layers, function (elt, index, array) {
     return elt['Identifier'] == config['layer'];
   });
-  if (!l) {
+  if (l === null) {
     return null;
   }
   const tileMatrixSets = wmtsCap['Contents']['TileMatrixSet'];
   let idx;
   if (l['TileMatrixSetLink'].length > 1) {
     if ('projection' in config) {
-      idx = l['TileMatrixSetLink'].findIndex(function (elt) {
-        const tileMatrixSet = tileMatrixSets.find(function (el) {
+      idx = findIndex(l['TileMatrixSetLink'], function (elt, index, array) {
+        const tileMatrixSet = find(tileMatrixSets, function (el) {
           return el['Identifier'] == elt['TileMatrixSet'];
         });
         const supportedCRS = tileMatrixSet['SupportedCRS'];
@@ -380,11 +391,12 @@ export function optionsFromCapabilities(wmtsCap, config) {
         const proj2 = getProjection(config['projection']);
         if (proj1 && proj2) {
           return equivalent(proj1, proj2);
+        } else {
+          return supportedCRS == config['projection'];
         }
-        return supportedCRS == config['projection'];
       });
     } else {
-      idx = l['TileMatrixSetLink'].findIndex(function (elt) {
+      idx = findIndex(l['TileMatrixSetLink'], function (elt, index, array) {
         return elt['TileMatrixSet'] == config['matrixSet'];
       });
     }
@@ -405,11 +417,12 @@ export function optionsFromCapabilities(wmtsCap, config) {
   if ('format' in config) {
     format = config['format'];
   }
-  idx = l['Style'].findIndex(function (elt) {
+  idx = findIndex(l['Style'], function (elt, index, array) {
     if ('style' in config) {
       return elt['Title'] == config['style'];
+    } else {
+      return elt['isDefault'];
     }
-    return elt['isDefault'];
   });
   if (idx < 0) {
     idx = 0;
@@ -429,7 +442,7 @@ export function optionsFromCapabilities(wmtsCap, config) {
   }
 
   const matrixSets = wmtsCap['Contents']['TileMatrixSet'];
-  const matrixSetObj = matrixSets.find(function (elt) {
+  const matrixSetObj = find(matrixSets, function (elt, index, array) {
     return elt['Identifier'] == matrixSet;
   });
 
@@ -464,7 +477,8 @@ export function optionsFromCapabilities(wmtsCap, config) {
   //in case of matrix limits, use matrix limits to calculate extent
   if (matrixLimits) {
     selectedMatrixLimit = matrixLimits[matrixLimits.length - 1];
-    const m = matrixSetObj.TileMatrix.find(
+    const m = find(
+      matrixSetObj.TileMatrix,
       (tileMatrixValue) =>
         tileMatrixValue.Identifier === selectedMatrixLimit.TileMatrix ||
         matrixSetObj.Identifier + ':' + tileMatrixValue.Identifier ===
@@ -542,7 +556,7 @@ export function optionsFromCapabilities(wmtsCap, config) {
 
     for (let i = 0, ii = gets.length; i < ii; ++i) {
       if (gets[i]['Constraint']) {
-        const constraint = gets[i]['Constraint'].find(function (element) {
+        const constraint = find(gets[i]['Constraint'], function (element) {
           return element['name'] == 'GetEncoding';
         });
         const encodings = constraint['AllowedValues']['Value'];
@@ -552,7 +566,7 @@ export function optionsFromCapabilities(wmtsCap, config) {
           requestEncoding = encodings[0];
         }
         if (requestEncoding === 'KVP') {
-          if (encodings.includes('KVP')) {
+          if (includes(encodings, 'KVP')) {
             urls.push(/** @type {string} */ (gets[i]['href']));
           }
         } else {

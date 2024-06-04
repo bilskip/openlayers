@@ -6,6 +6,8 @@ import EventType from '../events/EventType.js';
 import ImageSource, {defaultImageLoadFunction} from './Image.js';
 import ImageState from '../ImageState.js';
 import ImageWrapper from '../Image.js';
+import {IMAGE_SMOOTHING_DISABLED} from '../renderer/canvas/common.js';
+import {assign} from '../obj.js';
 import {createCanvasContext2D} from '../dom.js';
 import {getHeight, getWidth, intersects} from '../extent.js';
 import {get as getProjection} from '../proj.js';
@@ -19,6 +21,7 @@ import {get as getProjection} from '../proj.js';
  * @property {import("../extent.js").Extent} [imageExtent] Extent of the image in map coordinates.
  * This is the [left, bottom, right, top] map coordinates of your image.
  * @property {import("../Image.js").LoadFunction} [imageLoadFunction] Optional function to load an image given a URL.
+ * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
  * @property {import("../proj.js").ProjectionLike} [projection] Projection. Default is the view projection.
@@ -45,9 +48,15 @@ class Static extends ImageSource {
           ? options.imageLoadFunction
           : defaultImageLoadFunction;
 
+    let interpolate =
+      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
+    if (options.interpolate !== undefined) {
+      interpolate = options.interpolate;
+    }
+
     super({
       attributions: options.attributions,
-      interpolate: options.interpolate,
+      interpolate: interpolate,
       projection: getProjection(options.projection),
     });
 
@@ -73,8 +82,7 @@ class Static extends ImageSource {
       1,
       this.url_,
       crossOrigin,
-      imageLoadFunction,
-      createCanvasContext2D(1, 1)
+      imageLoadFunction
     );
 
     /**
@@ -150,7 +158,7 @@ class Static extends ImageSource {
       if (targetWidth !== imageWidth || targetHeight !== imageHeight) {
         const context = createCanvasContext2D(targetWidth, targetHeight);
         if (!this.getInterpolate()) {
-          context.imageSmoothingEnabled = false;
+          assign(context, IMAGE_SMOOTHING_DISABLED);
         }
         const canvas = context.canvas;
         context.drawImage(

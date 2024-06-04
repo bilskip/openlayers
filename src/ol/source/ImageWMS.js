@@ -8,6 +8,7 @@ import ImageWrapper from '../Image.js';
 import {DEFAULT_VERSION} from './wms.js';
 import {appendParams} from '../uri.js';
 import {assert} from '../asserts.js';
+import {assign} from '../obj.js';
 import {calculateSourceResolution} from '../reproj.js';
 import {ceil, floor, round} from '../math.js';
 import {compareVersions} from '../string.js';
@@ -18,7 +19,6 @@ import {
   getHeight,
   getWidth,
 } from '../extent.js';
-import {createCanvasContext2D} from '../dom.js';
 import {get as getProjection, transform} from '../proj.js';
 
 /**
@@ -45,9 +45,10 @@ const GETFEATUREINFO_IMAGE_SIZE = [101, 101];
  * the remote WMS server: `mapserver`, `geoserver`, `carmentaserver`, or `qgis`.
  * Only needed if `hidpi` is `true`.
  * @property {import("../Image.js").LoadFunction} [imageLoadFunction] Optional function to load an image given a URL.
+ * @property {boolean} [imageSmoothing=true] Deprecated.  Use the `interpolate` option instead.
  * @property {boolean} [interpolate=true] Use interpolated values when resampling.  By default,
  * linear interpolation is used when resampling.  Set to false to use the nearest neighbor instead.
- * @property {Object<string,*>} [params] WMS request parameters.
+ * @property {Object<string,*>} params WMS request parameters.
  * At least a `LAYERS` param is required. `STYLES` is
  * `''` by default. `VERSION` is `1.3.0` by default. `WIDTH`, `HEIGHT`, `BBOX`
  * and `CRS` (`SRS` for WMS version < 1.3.0) will be set dynamically.
@@ -57,7 +58,7 @@ const GETFEATUREINFO_IMAGE_SIZE = [101, 101];
  * higher.
  * @property {Array<number>} [resolutions] Resolutions.
  * If specified, requests will be made for these resolutions only.
- * @property {string} [url] WMS service URL.
+ * @property {string} url WMS service URL.
  */
 
 /**
@@ -69,23 +70,23 @@ const GETFEATUREINFO_IMAGE_SIZE = [101, 101];
  */
 class ImageWMS extends ImageSource {
   /**
-   * @param {Options} [options] ImageWMS options.
+   * @param {Options} [opt_options] ImageWMS options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
+
+    let interpolate =
+      options.imageSmoothing !== undefined ? options.imageSmoothing : true;
+    if (options.interpolate !== undefined) {
+      interpolate = options.interpolate;
+    }
 
     super({
       attributions: options.attributions,
-      interpolate: options.interpolate,
+      interpolate: interpolate,
       projection: options.projection,
       resolutions: options.resolutions,
     });
-
-    /**
-     * @private
-     * @type {CanvasRenderingContext2D}
-     */
-    this.context_ = createCanvasContext2D(1, 1);
 
     /**
      * @private
@@ -113,7 +114,7 @@ class ImageWMS extends ImageSource {
      * @private
      * @type {!Object}
      */
-    this.params_ = Object.assign({}, options.params);
+    this.params_ = options.params || {};
 
     /**
      * @private
@@ -205,7 +206,7 @@ class ImageWMS extends ImageSource {
       'TRANSPARENT': true,
       'QUERY_LAYERS': this.params_['LAYERS'],
     };
-    Object.assign(baseParams, this.params_, params);
+    assign(baseParams, this.params_, params);
 
     const x = floor((coordinate[0] - extent[0]) / resolution, DECIMALS);
     const y = floor((extent[3] - coordinate[1]) / resolution, DECIMALS);
@@ -264,7 +265,7 @@ class ImageWMS extends ImageSource {
       baseParams['SCALE'] = (resolution * mpu) / pixelSize;
     }
 
-    Object.assign(baseParams, params);
+    assign(baseParams, params);
 
     return appendParams(/** @type {string} */ (this.url_), baseParams);
   }
@@ -306,10 +307,14 @@ class ImageWMS extends ImageSource {
       viewWidth,
       viewHeight,
     ]);
-    const marginWidth = ceil(((this.ratio_ - 1) * viewWidth) / 2, DECIMALS);
-    const requestWidth = viewWidth + 2 * marginWidth;
-    const marginHeight = ceil(((this.ratio_ - 1) * viewHeight) / 2, DECIMALS);
-    const requestHeight = viewHeight + 2 * marginHeight;
+    const requestWidth = ceil(
+      (this.ratio_ * getWidth(extent)) / imageResolution,
+      DECIMALS
+    );
+    const requestHeight = ceil(
+      (this.ratio_ * getHeight(extent)) / imageResolution,
+      DECIMALS
+    );
     const requestExtent = getForViewAndSize(center, imageResolution, 0, [
       requestWidth,
       requestHeight,
@@ -333,7 +338,7 @@ class ImageWMS extends ImageSource {
       'FORMAT': 'image/png',
       'TRANSPARENT': true,
     };
-    Object.assign(params, this.params_);
+    assign(params, this.params_);
 
     this.imageSize_[0] = round(
       getWidth(requestExtent) / imageResolution,
@@ -358,8 +363,7 @@ class ImageWMS extends ImageSource {
       pixelRatio,
       url,
       this.crossOrigin_,
-      this.imageLoadFunction_,
-      this.context_
+      this.imageLoadFunction_
     );
 
     this.renderedRevision_ = this.getRevision();
@@ -476,7 +480,7 @@ class ImageWMS extends ImageSource {
    * @api
    */
   updateParams(params) {
-    Object.assign(this.params_, params);
+    assign(this.params_, params);
     this.updateV13_();
     this.image_ = null;
     this.changed();

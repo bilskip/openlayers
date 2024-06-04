@@ -2,6 +2,7 @@
  * @module ol/render/canvas
  */
 import BaseObject from '../Object.js';
+import EventTarget from '../events/Target.js';
 import {WORKER_OFFSCREEN_CANVAS} from '../has.js';
 import {clear} from '../obj.js';
 import {createCanvasContext2D} from '../dom.js';
@@ -58,11 +59,10 @@ import {getFontParameters} from '../css.js';
 /**
  * @typedef {Object} TextState
  * @property {string} font Font.
- * @property {CanvasTextAlign} [textAlign] TextAlign.
- * @property {number} [repeat] Repeat.
- * @property {import("../style/Text.js").TextJustify} [justify] Justify.
- * @property {CanvasTextBaseline} textBaseline TextBaseline.
- * @property {import("../style/Text.js").TextPlacement} [placement] Placement.
+ * @property {string} [textAlign] TextAlign.
+ * @property {string} [justify] Justify.
+ * @property {string} textBaseline TextBaseline.
+ * @property {string} [placement] Placement.
  * @property {number} [maxAngle] MaxAngle.
  * @property {boolean} [overflow] Overflow.
  * @property {import("../style/Fill.js").default} [backgroundFill] BackgroundFill.
@@ -135,13 +135,13 @@ export const defaultStrokeStyle = '#000';
 
 /**
  * @const
- * @type {CanvasTextAlign}
+ * @type {string}
  */
 export const defaultTextAlign = 'center';
 
 /**
  * @const
- * @type {CanvasTextBaseline}
+ * @type {string}
  */
 export const defaultTextBaseline = 'middle';
 
@@ -161,6 +161,19 @@ export const defaultLineWidth = 1;
  * @type {BaseObject}
  */
 export const checkedFonts = new BaseObject();
+
+/**
+ * The label cache for text rendering. To change the default cache size of 2048
+ * entries, use {@link module:ol/structs/LRUCache~LRUCache#setSize cache.setSize()}.
+ * Deprecated - there is no label cache any more.
+ * @type {?}
+ * @api
+ * @deprecated
+ */
+export const labelCache = new EventTarget();
+labelCache.setSize = function () {
+  console.warn('labelCache is deprecated.'); //eslint-disable-line
+};
 
 /**
  * @type {CanvasRenderingContext2D}

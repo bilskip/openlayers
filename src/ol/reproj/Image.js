@@ -11,13 +11,7 @@ import {
   calculateSourceResolution,
   render as renderReprojected,
 } from '../reproj.js';
-import {
-  getCenter,
-  getHeight,
-  getIntersection,
-  getWidth,
-  isEmpty,
-} from '../extent.js';
+import {getCenter, getHeight, getIntersection, getWidth} from '../extent.js';
 import {listen, unlistenByKey} from '../events.js';
 
 /**
@@ -49,18 +43,8 @@ class ReprojImage extends ImageBase {
     getImageFunction,
     interpolate
   ) {
-    let maxSourceExtent = sourceProj.getExtent();
-    if (maxSourceExtent && sourceProj.canWrapX()) {
-      maxSourceExtent = maxSourceExtent.slice();
-      maxSourceExtent[0] = -Infinity;
-      maxSourceExtent[2] = Infinity;
-    }
-    let maxTargetExtent = targetProj.getExtent();
-    if (maxTargetExtent && targetProj.canWrapX()) {
-      maxTargetExtent = maxTargetExtent.slice();
-      maxTargetExtent[0] = -Infinity;
-      maxTargetExtent[2] = Infinity;
-    }
+    const maxSourceExtent = sourceProj.getExtent();
+    const maxTargetExtent = targetProj.getExtent();
 
     const limitedTargetExtent = maxTargetExtent
       ? getIntersection(targetExtent, maxTargetExtent)
@@ -86,9 +70,11 @@ class ReprojImage extends ImageBase {
     );
 
     const sourceExtent = triangulation.calculateSourceExtent();
-    const sourceImage = isEmpty(sourceExtent)
-      ? null
-      : getImageFunction(sourceExtent, sourceResolution, pixelRatio);
+    const sourceImage = getImageFunction(
+      sourceExtent,
+      sourceResolution,
+      pixelRatio
+    );
     const state = sourceImage ? ImageState.IDLE : ImageState.EMPTY;
     const sourcePixelRatio = sourceImage ? sourceImage.getPixelRatio() : 1;
 

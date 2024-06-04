@@ -3,10 +3,14 @@
  */
 
 /**
- * @return {never} Any return.
+ * @return {?} Any return.
  */
 export function abstract() {
-  throw new Error('Unimplemented abstract method.');
+  return /** @type {?} */ (
+    (function () {
+      throw new Error('Unimplemented abstract method.');
+    })()
+  );
 }
 
 /**

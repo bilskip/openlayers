@@ -24,15 +24,14 @@ import {
  * @property {number} [radius] Radius of a regular polygon.
  * @property {number} [radius1] First radius of a star. Ignored if radius is set.
  * @property {number} [radius2] Second radius of a star.
- * @property {number} [angle=0] Shape's angle in radians. A value of 0 will have one of the shape's points facing up.
- * @property {Array<number>} [displacement=[0, 0]] Displacement of the shape in pixels.
- * Positive values will shift the shape right and up.
+ * @property {number} [angle=0] Shape's angle in radians. A value of 0 will have one of the shape's point facing up.
+ * @property {Array<number>} [displacement=[0,0]] Displacement of the shape
  * @property {import("./Stroke.js").default} [stroke] Stroke style.
  * @property {number} [rotation=0] Rotation in radians (positive rotation clockwise).
  * @property {boolean} [rotateWithView=false] Whether to rotate the shape with the view.
  * @property {number|import("../size.js").Size} [scale=1] Scale. Unless two dimensional scaling is required a better
  * result may be obtained with appropriate settings for `radius`, `radius1` and `radius2`.
- * @property {"declutter"|"obstacle"|"none"|undefined} [declutterMode] Declutter mode.
+ * @property {"declutter"|"obstacle"|"none"|undefined} [declutterMode] Declutter mode
  */
 
 /**
@@ -40,7 +39,7 @@ import {
  * @property {import("../colorlike.js").ColorLike} [strokeStyle] StrokeStyle.
  * @property {number} strokeWidth StrokeWidth.
  * @property {number} size Size.
- * @property {Array<number>|null} lineDash LineDash.
+ * @property {Array<number>} lineDash LineDash.
  * @property {number} lineDashOffset LineDashOffset.
  * @property {CanvasLineJoin} lineJoin LineJoin.
  * @property {number} miterLimit MiterLimit.
@@ -180,13 +179,7 @@ class RegularShape extends ImageStyle {
       return null;
     }
     const displacement = this.getDisplacement();
-    const scale = this.getScaleArray();
-    // anchor is scaled by renderer but displacement should not be scaled
-    // so divide by scale here
-    return [
-      size[0] / 2 - displacement[0] / scale[0],
-      size[1] / 2 + displacement[1] / scale[1],
-    ];
+    return [size[0] / 2 - displacement[0], size[1] / 2 + displacement[1]];
   }
 
   /**
@@ -407,7 +400,7 @@ class RegularShape extends ImageStyle {
     if (lineJoin === 'miter' && miterRatio <= miterLimit) {
       return miterRatio * strokeWidth;
     }
-    // Calculate the distance from center to the stroke corner where
+    // Calculate the distnce from center to the stroke corner where
     // it was cut short because of the miter limit.
     //              l
     //        ----+---- <= distance from center to here is maxr
@@ -524,7 +517,7 @@ class RegularShape extends ImageStyle {
     if (this.stroke_) {
       context.strokeStyle = renderOptions.strokeStyle;
       context.lineWidth = renderOptions.strokeWidth;
-      if (renderOptions.lineDash) {
+      if (context.setLineDash && renderOptions.lineDash) {
         context.setLineDash(renderOptions.lineDash);
         context.lineDashOffset = renderOptions.lineDashOffset;
       }

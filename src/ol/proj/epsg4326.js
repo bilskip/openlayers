@@ -2,6 +2,7 @@
  * @module ol/proj/epsg4326
  */
 import Projection from './Projection.js';
+import Units from './Units.js';
 
 /**
  * Semi-major radius of the WGS84 ellipsoid.
@@ -36,14 +37,14 @@ export const METERS_PER_UNIT = (Math.PI * RADIUS) / 180;
 class EPSG4326Projection extends Projection {
   /**
    * @param {string} code Code.
-   * @param {string} [axisOrientation] Axis orientation.
+   * @param {string} [opt_axisOrientation] Axis orientation.
    */
-  constructor(code, axisOrientation) {
+  constructor(code, opt_axisOrientation) {
     super({
       code: code,
-      units: 'degrees',
+      units: Units.DEGREES,
       extent: EXTENT,
-      axisOrientation: axisOrientation,
+      axisOrientation: opt_axisOrientation,
       global: true,
       metersPerUnit: METERS_PER_UNIT,
       worldExtent: EXTENT,

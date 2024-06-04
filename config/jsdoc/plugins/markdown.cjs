@@ -63,11 +63,7 @@ function parse(source) {
 
   source = escapeUnderscoresAndTildes(source);
 
-  result = marked(source, {
-    renderer: markedRenderer,
-    headerIds: false,
-    mangle: false,
-  })
+  result = marked(source, {renderer: markedRenderer})
     .replace(/\s+$/, '')
     .replace(/&#39;/g, "'");
 
@@ -80,7 +76,7 @@ function shouldProcessString(tagName, text) {
   let shouldProcess = true;
 
   // we only want to process `@author` and `@see` tags that contain Markdown links
-  if ((tagName === 'author' || tagName === 'see') && !text.includes('[')) {
+  if ((tagName === 'author' || tagName === 'see') && text.indexOf('[') === -1) {
     shouldProcess = false;
   }
 

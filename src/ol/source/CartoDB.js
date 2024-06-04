@@ -3,6 +3,7 @@
  */
 
 import XYZ from './XYZ.js';
+import {assign} from '../obj.js';
 
 /**
  * @typedef {Object} Options
@@ -103,7 +104,7 @@ class CartoDB extends XYZ {
    * @api
    */
   updateConfig(config) {
-    Object.assign(this.config_, config);
+    assign(this.config_, config);
     this.initializeMap_();
   }
 

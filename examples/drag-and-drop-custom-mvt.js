@@ -107,15 +107,20 @@ function download(fullpath, filename) {
       return response.blob();
     })
     .then(function (blob) {
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
+      if (navigator.msSaveBlob) {
+        // link download attribute does not work on MS browsers
+        navigator.msSaveBlob(blob, filename);
+      } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      }
     });
 }
 
 document.getElementById('download-mvt').addEventListener('click', function () {
   const fullpath =
-    'https://basemaps.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer/tile/' +
+    'https://basemaps.arcgis.com/v1/arcgis/rest/services/World_Basemap/VectorTileServer/tile/' +
     tileCoordZ.value +
     '/' +
     tileCoordY.value +

@@ -3,15 +3,16 @@
  */
 import Layer from './Layer.js';
 import TileProperty from './TileProperty.js';
+import {assign} from '../obj.js';
 
 /***
  * @template Return
  * @typedef {import("../Observable").OnSignature<import("../Observable").EventTypes, import("../events/Event.js").default, Return> &
  *   import("../Observable").OnSignature<import("./Base").BaseLayerObjectEventTypes|
- *     import("./Layer.js").LayerEventType|'change:preload'|'change:useInterimTilesOnError', import("../Object").ObjectEvent, Return> &
+ *     'change:source'|'change:preload'|'change:useInterimTilesOnError', import("../Object").ObjectEvent, Return> &
  *   import("../Observable").OnSignature<import("../render/EventType").LayerRenderEventTypes, import("../render/Event").default, Return> &
  *   import("../Observable").CombinedOnSignature<import("../Observable").EventTypes|import("./Base").BaseLayerObjectEventTypes|
- *   import("./Layer.js").LayerEventType|'change:preload'|'change:useInterimTilesOnError'|import("../render/EventType").LayerRenderEventTypes, Return>} BaseTileLayerOnSignature
+ *   'change:source'|'change:preload'|'change:useInterimTilesOnError'|import("../render/EventType").LayerRenderEventTypes, Return>} BaseTileLayerOnSignature
  */
 
 /**
@@ -37,10 +38,10 @@ import TileProperty from './TileProperty.js';
  * @property {number} [preload=0] Preload. Load low-resolution tiles up to `preload` levels. `0`
  * means no preloading.
  * @property {TileSourceType} [source] Source for this layer.
- * @property {import("../Map.js").default} [map] Sets the layer as overlay on a map. The map will not manage
+ * @property {import("../PluggableMap.js").default} [map] Sets the layer as overlay on a map. The map will not manage
  * this layer in its layers collection, and the layer will be rendered on top. This is useful for
  * temporary layers. The standard way to add a layer to a map and have it managed by the map is to
- * use {@link import("../Map.js").default#addLayer map.addLayer()}.
+ * use {@link import("../PluggableMap.js").default#addLayer map.addLayer()}.
  * @property {boolean} [useInterimTilesOnError=true] Use interim tiles on error.
  * @property {Object<string, *>} [properties] Arbitrary observable properties. Can be accessed with `#get()` and `#set()`.
  */
@@ -60,12 +61,12 @@ import TileProperty from './TileProperty.js';
  */
 class BaseTileLayer extends Layer {
   /**
-   * @param {Options<TileSourceType>} [options] Tile layer options.
+   * @param {Options<TileSourceType>} [opt_options] Tile layer options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
-    const baseOptions = Object.assign({}, options);
+    const baseOptions = assign({}, options);
 
     delete baseOptions.preload;
     delete baseOptions.useInterimTilesOnError;

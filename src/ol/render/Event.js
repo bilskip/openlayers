@@ -7,12 +7,12 @@ import Event from '../events/Event.js';
 class RenderEvent extends Event {
   /**
    * @param {import("./EventType.js").default} type Type.
-   * @param {import("../transform.js").Transform} [inversePixelTransform] Transform for
+   * @param {import("../transform.js").Transform} [opt_inversePixelTransform] Transform for
    *     CSS pixels to rendered pixels.
-   * @param {import("../Map.js").FrameState} [frameState] Frame state.
-   * @param {?(CanvasRenderingContext2D|WebGLRenderingContext)} [context] Context.
+   * @param {import("../PluggableMap.js").FrameState} [opt_frameState] Frame state.
+   * @param {?(CanvasRenderingContext2D|WebGLRenderingContext)} [opt_context] Context.
    */
-  constructor(type, inversePixelTransform, frameState, context) {
+  constructor(type, opt_inversePixelTransform, opt_frameState, opt_context) {
     super(type);
 
     /**
@@ -21,14 +21,14 @@ class RenderEvent extends Event {
      * @type {import("../transform.js").Transform|undefined}
      * @api
      */
-    this.inversePixelTransform = inversePixelTransform;
+    this.inversePixelTransform = opt_inversePixelTransform;
 
     /**
      * An object representing the current render frame state.
-     * @type {import("../Map.js").FrameState|undefined}
+     * @type {import("../PluggableMap.js").FrameState|undefined}
      * @api
      */
-    this.frameState = frameState;
+    this.frameState = opt_frameState;
 
     /**
      * Canvas context. Not available when the event is dispatched by the map. For Canvas 2D layers,
@@ -37,7 +37,7 @@ class RenderEvent extends Event {
      * @type {CanvasRenderingContext2D|WebGLRenderingContext|undefined}
      * @api
      */
-    this.context = context;
+    this.context = opt_context;
   }
 }
 

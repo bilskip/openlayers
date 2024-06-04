@@ -6,30 +6,30 @@ import Event from './events/Event.js';
 /**
  * @classdesc
  * Events emitted as map events are instances of this type.
- * See {@link module:ol/Map~Map} for which events trigger a map event.
+ * See {@link module:ol/PluggableMap~PluggableMap} for which events trigger a map event.
  */
 class MapEvent extends Event {
   /**
    * @param {string} type Event type.
-   * @param {import("./Map.js").default} map Map.
-   * @param {?import("./Map.js").FrameState} [frameState] Frame state.
+   * @param {import("./PluggableMap.js").default} map Map.
+   * @param {?import("./PluggableMap.js").FrameState} [opt_frameState] Frame state.
    */
-  constructor(type, map, frameState) {
+  constructor(type, map, opt_frameState) {
     super(type);
 
     /**
      * The map where the event occurred.
-     * @type {import("./Map.js").default}
+     * @type {import("./PluggableMap.js").default}
      * @api
      */
     this.map = map;
 
     /**
      * The frame state at the time of the event.
-     * @type {?import("./Map.js").FrameState}
+     * @type {?import("./PluggableMap.js").FrameState}
      * @api
      */
-    this.frameState = frameState !== undefined ? frameState : null;
+    this.frameState = opt_frameState !== undefined ? opt_frameState : null;
   }
 }
 

@@ -55,23 +55,27 @@ const style = {
 const minYearInput = document.getElementById('min-year');
 const maxYearInput = document.getElementById('max-year');
 
+function updateMinYear() {
+  style.variables.minYear = parseInt(minYearInput.value);
+  updateStatusText();
+}
+function updateMaxYear() {
+  style.variables.maxYear = parseInt(maxYearInput.value);
+  updateStatusText();
+}
 function updateStatusText() {
   const div = document.getElementById('status');
   div.querySelector('span.min-year').textContent = minYearInput.value;
   div.querySelector('span.max-year').textContent = maxYearInput.value;
 }
 
-minYearInput.addEventListener('input', function () {
-  style.variables.minYear = parseInt(minYearInput.value);
-  updateStatusText();
-});
-maxYearInput.addEventListener('input', function () {
-  style.variables.maxYear = parseInt(maxYearInput.value);
-  updateStatusText();
-});
+minYearInput.addEventListener('input', updateMinYear);
+minYearInput.addEventListener('change', updateMinYear);
+maxYearInput.addEventListener('input', updateMaxYear);
+maxYearInput.addEventListener('change', updateMaxYear);
 updateStatusText();
 
-// load data;
+// load data
 const client = new XMLHttpRequest();
 client.open('GET', 'data/csv/meteorite_landings.csv');
 client.onload = function () {

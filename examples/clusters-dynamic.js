@@ -13,7 +13,7 @@ import {
 import {Cluster, Vector as VectorSource, XYZ} from '../src/ol/source.js';
 import {LineString, Point, Polygon} from '../src/ol/geom.js';
 import {Tile as TileLayer, Vector as VectorLayer} from '../src/ol/layer.js';
-import {createEmpty, extend, getHeight, getWidth} from '../src/ol/extent.js';
+import {createEmpty, extend, getWidth} from '../src/ol/extent.js';
 import {fromLonLat} from '../src/ol/proj.js';
 
 const circleDistanceMultiplier = 1;
@@ -72,11 +72,11 @@ let clickFeature, clickResolution;
  * Style for clusters with features that are too close to each other, activated on click.
  * @param {Feature} cluster A cluster with overlapping members.
  * @param {number} resolution The current view resolution.
- * @return {Style|null} A style to render an expanded view of the cluster members.
+ * @return {Style} A style to render an expanded view of the cluster members.
  */
 function clusterCircleStyle(cluster, resolution) {
   if (cluster !== clickFeature || resolution !== clickResolution) {
-    return null;
+    return;
   }
   const clusterMembers = cluster.get('features');
   const centerCoordinates = cluster.getGeometry().getCoordinates();
@@ -141,11 +141,11 @@ let hoverFeature;
 /**
  * Style for convex hulls of clusters, activated on hover.
  * @param {Feature} cluster The cluster feature.
- * @return {Style|null} Polygon style for the convex hull of the cluster.
+ * @return {Style} Polygon style for the convex hull of the cluster.
  */
 function clusterHullStyle(cluster) {
   if (cluster !== hoverFeature) {
-    return null;
+    return;
   }
   const originalFeatures = cluster.get('features');
   const points = originalFeatures.map((feature) =>
@@ -174,9 +174,10 @@ function clusterStyle(feature) {
         }),
       }),
     ];
+  } else {
+    const originalFeature = feature.get('features')[0];
+    return clusterMemberStyle(originalFeature);
   }
-  const originalFeature = feature.get('features')[0];
-  return clusterMemberStyle(originalFeature);
 }
 
 const vectorSource = new VectorSource({
@@ -261,7 +262,7 @@ map.on('click', (event) => {
         const resolution = map.getView().getResolution();
         if (
           view.getZoom() === view.getMaxZoom() ||
-          (getWidth(extent) < resolution && getHeight(extent) < resolution)
+          (getWidth(extent) < resolution && getWidth(extent) < resolution)
         ) {
           // Show an expanded view of the cluster members.
           clickFeature = features[0];

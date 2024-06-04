@@ -3,6 +3,7 @@
  */
 import Feature from '../Feature.js';
 import GeometryCollection from '../geom/GeometryCollection.js';
+import GeometryLayout from '../geom/GeometryLayout.js';
 import LineString from '../geom/LineString.js';
 import MultiLineString from '../geom/MultiLineString.js';
 import MultiPoint from '../geom/MultiPoint.js';
@@ -14,7 +15,7 @@ import {transformGeometryWithOptions} from './Feature.js';
 
 /**
  * Geometry constructors
- * @enum {function (new:import("../geom/Geometry.js").default, Array, import("../geom/Geometry.js").GeometryLayout)}
+ * @enum {function (new:import("../geom/Geometry.js").default, Array, import("../geom/GeometryLayout.js").default)}
  */
 const GeometryConstructor = {
   'POINT': Point,
@@ -121,13 +122,13 @@ class Lexer {
 
   /**
    * @param {string} c Character.
-   * @param {boolean} [decimal] Whether the string number
+   * @param {boolean} [opt_decimal] Whether the string number
    *     contains a dot, i.e. is a decimal number.
    * @return {boolean} Whether the character is numeric.
    * @private
    */
-  isNumeric_(c, decimal) {
-    decimal = decimal !== undefined ? decimal : false;
+  isNumeric_(c, opt_decimal) {
+    const decimal = opt_decimal !== undefined ? opt_decimal : false;
     return (c >= '0' && c <= '9') || (c == '.' && !decimal);
   }
 
@@ -248,10 +249,10 @@ class Parser {
     };
 
     /**
-     * @type {import("../geom/Geometry.js").GeometryLayout}
+     * @type {import("../geom/GeometryLayout.js").default}
      * @private
      */
-    this.layout_ = 'XY';
+    this.layout_ = GeometryLayout.XY;
   }
 
   /**
@@ -295,23 +296,22 @@ class Parser {
 
   /**
    * Try to parse the dimensional info.
-   * @return {import("../geom/Geometry.js").GeometryLayout} The layout.
+   * @return {import("../geom/GeometryLayout.js").default} The layout.
    * @private
    */
   parseGeometryLayout_() {
-    /** @type {import("../geom/Geometry.js").GeometryLayout} */
-    let layout = 'XY';
+    let layout = GeometryLayout.XY;
     const dimToken = this.token_;
     if (this.isTokenType(TokenType.TEXT)) {
       const dimInfo = dimToken.value;
       if (dimInfo === Z) {
-        layout = 'XYZ';
+        layout = GeometryLayout.XYZ;
       } else if (dimInfo === M) {
-        layout = 'XYM';
+        layout = GeometryLayout.XYM;
       } else if (dimInfo === ZM) {
-        layout = 'XYZM';
+        layout = GeometryLayout.XYZM;
       }
-      if (layout !== 'XY') {
+      if (layout !== GeometryLayout.XY) {
         this.consume_();
       }
     }
@@ -540,52 +540,53 @@ class Parser {
         }
         const geometries = this.parseGeometryCollectionText_();
         return new GeometryCollection(geometries);
-      }
-      const ctor = GeometryConstructor[geomType];
-      if (!ctor) {
-        throw new Error('Invalid geometry type: ' + geomType);
-      }
-
-      let coordinates;
-
-      if (isEmpty) {
-        if (geomType == 'POINT') {
-          coordinates = [NaN, NaN];
-        } else {
-          coordinates = [];
-        }
       } else {
-        switch (geomType) {
-          case 'POINT': {
-            coordinates = this.parsePointText_();
-            break;
-          }
-          case 'LINESTRING': {
-            coordinates = this.parseLineStringText_();
-            break;
-          }
-          case 'POLYGON': {
-            coordinates = this.parsePolygonText_();
-            break;
-          }
-          case 'MULTIPOINT': {
-            coordinates = this.parseMultiPointText_();
-            break;
-          }
-          case 'MULTILINESTRING': {
-            coordinates = this.parseMultiLineStringText_();
-            break;
-          }
-          case 'MULTIPOLYGON': {
-            coordinates = this.parseMultiPolygonText_();
-            break;
-          }
-          default:
-            break;
+        const ctor = GeometryConstructor[geomType];
+        if (!ctor) {
+          throw new Error('Invalid geometry type: ' + geomType);
         }
-      }
 
-      return new ctor(coordinates, this.layout_);
+        let coordinates;
+
+        if (isEmpty) {
+          if (geomType == 'POINT') {
+            coordinates = [NaN, NaN];
+          } else {
+            coordinates = [];
+          }
+        } else {
+          switch (geomType) {
+            case 'POINT': {
+              coordinates = this.parsePointText_();
+              break;
+            }
+            case 'LINESTRING': {
+              coordinates = this.parseLineStringText_();
+              break;
+            }
+            case 'POLYGON': {
+              coordinates = this.parsePolygonText_();
+              break;
+            }
+            case 'MULTIPOINT': {
+              coordinates = this.parseMultiPointText_();
+              break;
+            }
+            case 'MULTILINESTRING': {
+              coordinates = this.parseMultiLineStringText_();
+              break;
+            }
+            case 'MULTIPOLYGON': {
+              coordinates = this.parseMultiPolygonText_();
+              break;
+            }
+            default:
+              break;
+          }
+        }
+
+        return new ctor(coordinates, this.layout_);
+      }
     }
     throw new Error(this.formatErrorMessage_());
   }
@@ -600,12 +601,12 @@ class Parser {
  */
 class WKT extends TextFeature {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * Split GeometryCollection into multiple features.
@@ -632,11 +633,11 @@ class WKT extends TextFeature {
   /**
    * @protected
    * @param {string} text Text.
-   * @param {import("./Feature.js").ReadOptions} [options] Read options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
    * @return {import("../Feature.js").default} Feature.
    */
-  readFeatureFromText(text, options) {
-    const geom = this.readGeometryFromText(text, options);
+  readFeatureFromText(text, opt_options) {
+    const geom = this.readGeometryFromText(text, opt_options);
     const feature = new Feature();
     feature.setGeometry(geom);
     return feature;
@@ -644,13 +645,13 @@ class WKT extends TextFeature {
 
   /**
    * @param {string} text Text.
-   * @param {import("./Feature.js").ReadOptions} [options] Read options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
    * @protected
    * @return {Array<Feature>} Features.
    */
-  readFeaturesFromText(text, options) {
+  readFeaturesFromText(text, opt_options) {
     let geometries = [];
-    const geometry = this.readGeometryFromText(text, options);
+    const geometry = this.readGeometryFromText(text, opt_options);
     if (this.splitCollection_ && geometry.getType() == 'GeometryCollection') {
       geometries = /** @type {GeometryCollection} */ (
         geometry
@@ -669,55 +670,55 @@ class WKT extends TextFeature {
 
   /**
    * @param {string} text Text.
-   * @param {import("./Feature.js").ReadOptions} [options] Read options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
    * @protected
    * @return {import("../geom/Geometry.js").default} Geometry.
    */
-  readGeometryFromText(text, options) {
+  readGeometryFromText(text, opt_options) {
     const geometry = this.parse_(text);
-    return transformGeometryWithOptions(geometry, false, options);
+    return transformGeometryWithOptions(geometry, false, opt_options);
   }
 
   /**
    * @param {import("../Feature.js").default} feature Features.
-   * @param {import("./Feature.js").WriteOptions} [options] Write options.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
    * @protected
    * @return {string} Text.
    */
-  writeFeatureText(feature, options) {
+  writeFeatureText(feature, opt_options) {
     const geometry = feature.getGeometry();
     if (geometry) {
-      return this.writeGeometryText(geometry, options);
+      return this.writeGeometryText(geometry, opt_options);
     }
     return '';
   }
 
   /**
    * @param {Array<import("../Feature.js").default>} features Features.
-   * @param {import("./Feature.js").WriteOptions} [options] Write options.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
    * @protected
    * @return {string} Text.
    */
-  writeFeaturesText(features, options) {
+  writeFeaturesText(features, opt_options) {
     if (features.length == 1) {
-      return this.writeFeatureText(features[0], options);
+      return this.writeFeatureText(features[0], opt_options);
     }
     const geometries = [];
     for (let i = 0, ii = features.length; i < ii; ++i) {
       geometries.push(features[i].getGeometry());
     }
     const collection = new GeometryCollection(geometries);
-    return this.writeGeometryText(collection, options);
+    return this.writeGeometryText(collection, opt_options);
   }
 
   /**
    * @param {import("../geom/Geometry.js").default} geometry Geometry.
-   * @param {import("./Feature.js").WriteOptions} [options] Write options.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Write options.
    * @protected
    * @return {string} Text.
    */
-  writeGeometryText(geometry, options) {
-    return encode(transformGeometryWithOptions(geometry, true, options));
+  writeGeometryText(geometry, opt_options) {
+    return encode(transformGeometryWithOptions(geometry, true, opt_options));
   }
 }
 
@@ -818,10 +819,10 @@ function encodeMultiPolygonGeometry(geom) {
 function encodeGeometryLayout(geom) {
   const layout = geom.getLayout();
   let dimInfo = '';
-  if (layout === 'XYZ' || layout === 'XYZM') {
+  if (layout === GeometryLayout.XYZ || layout === GeometryLayout.XYZM) {
     dimInfo += Z;
   }
-  if (layout === 'XYM' || layout === 'XYZM') {
+  if (layout === GeometryLayout.XYM || layout === GeometryLayout.XYZM) {
     dimInfo += M;
   }
   return dimInfo;

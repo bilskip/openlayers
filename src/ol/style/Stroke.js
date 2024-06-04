@@ -10,6 +10,8 @@
  * @property {CanvasLineCap} [lineCap='round'] Line cap style: `butt`, `round`, or `square`.
  * @property {CanvasLineJoin} [lineJoin='round'] Line join style: `bevel`, `round`, or `miter`.
  * @property {Array<number>} [lineDash] Line dash pattern. Default is `null` (no dash).
+ * Please note that Internet Explorer 10 and lower do not support the `setLineDash` method on
+ * the `CanvasRenderingContext2D` and therefore this option will have no visual effect in these browsers.
  * @property {number} [lineDashOffset=0] Line dash offset.
  * @property {number} [miterLimit=10] Miter limit.
  * @property {number} [width] Width.
@@ -25,10 +27,10 @@
  */
 class Stroke {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options || {};
+  constructor(opt_options) {
+    const options = opt_options || {};
 
     /**
      * @private
@@ -44,7 +46,7 @@ class Stroke {
 
     /**
      * @private
-     * @type {Array<number>|null}
+     * @type {Array<number>}
      */
     this.lineDash_ = options.lineDash !== undefined ? options.lineDash : null;
 
@@ -111,7 +113,7 @@ class Stroke {
 
   /**
    * Get the line dash style for the stroke.
-   * @return {Array<number>|null} Line dash.
+   * @return {Array<number>} Line dash.
    * @api
    */
   getLineDash() {
@@ -177,7 +179,13 @@ class Stroke {
   /**
    * Set the line dash.
    *
-   * @param {Array<number>|null} lineDash Line dash.
+   * Please note that Internet Explorer 10 and lower [do not support][mdn] the
+   * `setLineDash` method on the `CanvasRenderingContext2D` and therefore this
+   * property will have no visual effect in these browsers.
+   *
+   * [mdn]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setLineDash#Browser_compatibility
+   *
+   * @param {Array<number>} lineDash Line dash.
    * @api
    */
   setLineDash(lineDash) {

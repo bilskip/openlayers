@@ -44,10 +44,10 @@ import MapBrowserEventType from '../MapBrowserEventType.js';
  */
 class PointerInteraction extends Interaction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     super(
       /** @type {import("./Interaction.js").InteractionOptions} */ (options)
@@ -190,7 +190,7 @@ class PointerInteraction extends Interaction {
 
 /**
  * @param {Array<PointerEvent>} pointerEvents List of events.
- * @return {{clientX: number, clientY: number}} Centroid pixel.
+ * @return {import("../pixel.js").Pixel} Centroid pixel.
  */
 export function centroid(pointerEvents) {
   const length = pointerEvents.length;
@@ -200,7 +200,7 @@ export function centroid(pointerEvents) {
     clientX += pointerEvents[i].clientX;
     clientY += pointerEvents[i].clientY;
   }
-  return {clientX: clientX / length, clientY: clientY / length};
+  return [clientX / length, clientY / length];
 }
 
 export default PointerInteraction;

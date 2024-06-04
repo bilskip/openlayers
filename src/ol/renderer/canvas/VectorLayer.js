@@ -63,7 +63,7 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
     this.animatingOrInteracting_;
 
     /**
-     * @type {ImageData|null}
+     * @type {ImageData}
      */
     this.hitDetectionImageData_ = null;
 
@@ -158,10 +158,10 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * @param {ExecutorGroup} executorGroup Executor group.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
-   * @param {import("rbush").default} [declutterTree] Declutter tree.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
+   * @param {import("rbush").default} [opt_declutterTree] Declutter tree.
    */
-  renderWorlds(executorGroup, frameState, declutterTree) {
+  renderWorlds(executorGroup, frameState, opt_declutterTree) {
     const extent = frameState.extent;
     const viewState = frameState.viewState;
     const center = viewState.center;
@@ -204,7 +204,7 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
         rotation,
         snapToPixel,
         undefined,
-        declutterTree
+        opt_declutterTree
       );
     } while (++world < endWorld);
   }
@@ -236,7 +236,7 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * Render declutter items for this layer
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    */
   renderDeclutter(frameState) {
     if (this.declutterExecutorGroup) {
@@ -252,7 +252,7 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * Render the layer.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @param {HTMLElement} target Target that may be used to render content to.
    * @return {HTMLElement} The rendered element.
    */
@@ -334,100 +334,105 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
   /**
    * Asynchronous layer level hit detection.
    * @param {import("../../pixel.js").Pixel} pixel Pixel.
-   * @return {Promise<Array<import("../../Feature").default>>} Promise
-   * that resolves with an array of features.
+   * @return {Promise<Array<import("../../Feature").default>>} Promise that resolves with an array of features.
    */
   getFeatures(pixel) {
-    return new Promise((resolve) => {
-      if (!this.hitDetectionImageData_ && !this.animatingOrInteracting_) {
-        const size = [this.context.canvas.width, this.context.canvas.height];
-        apply(this.pixelTransform, size);
-        const center = this.renderedCenter_;
-        const resolution = this.renderedResolution_;
-        const rotation = this.renderedRotation_;
-        const projection = this.renderedProjection_;
-        const extent = this.wrappedRenderedExtent_;
-        const layer = this.getLayer();
-        const transforms = [];
-        const width = size[0] * HIT_DETECT_RESOLUTION;
-        const height = size[1] * HIT_DETECT_RESOLUTION;
-        transforms.push(
-          this.getRenderTransform(
-            center,
-            resolution,
-            rotation,
-            HIT_DETECT_RESOLUTION,
-            width,
-            height,
-            0
-          ).slice()
-        );
-        const source = layer.getSource();
-        const projectionExtent = projection.getExtent();
-        if (
-          source.getWrapX() &&
-          projection.canWrapX() &&
-          !containsExtent(projectionExtent, extent)
-        ) {
-          let startX = extent[0];
-          const worldWidth = getWidth(projectionExtent);
-          let world = 0;
-          let offsetX;
-          while (startX < projectionExtent[0]) {
-            --world;
-            offsetX = worldWidth * world;
-            transforms.push(
-              this.getRenderTransform(
-                center,
-                resolution,
-                rotation,
-                HIT_DETECT_RESOLUTION,
-                width,
-                height,
-                offsetX
-              ).slice()
-            );
-            startX += worldWidth;
+    return new Promise(
+      /**
+       * @param {function(Array<import("../../Feature").default|import("../../render/Feature").default>): void} resolve Resolver function.
+       * @this {CanvasVectorLayerRenderer}
+       */
+      function (resolve) {
+        if (!this.hitDetectionImageData_ && !this.animatingOrInteracting_) {
+          const size = [this.context.canvas.width, this.context.canvas.height];
+          apply(this.pixelTransform, size);
+          const center = this.renderedCenter_;
+          const resolution = this.renderedResolution_;
+          const rotation = this.renderedRotation_;
+          const projection = this.renderedProjection_;
+          const extent = this.wrappedRenderedExtent_;
+          const layer = this.getLayer();
+          const transforms = [];
+          const width = size[0] * HIT_DETECT_RESOLUTION;
+          const height = size[1] * HIT_DETECT_RESOLUTION;
+          transforms.push(
+            this.getRenderTransform(
+              center,
+              resolution,
+              rotation,
+              HIT_DETECT_RESOLUTION,
+              width,
+              height,
+              0
+            ).slice()
+          );
+          const source = layer.getSource();
+          const projectionExtent = projection.getExtent();
+          if (
+            source.getWrapX() &&
+            projection.canWrapX() &&
+            !containsExtent(projectionExtent, extent)
+          ) {
+            let startX = extent[0];
+            const worldWidth = getWidth(projectionExtent);
+            let world = 0;
+            let offsetX;
+            while (startX < projectionExtent[0]) {
+              --world;
+              offsetX = worldWidth * world;
+              transforms.push(
+                this.getRenderTransform(
+                  center,
+                  resolution,
+                  rotation,
+                  HIT_DETECT_RESOLUTION,
+                  width,
+                  height,
+                  offsetX
+                ).slice()
+              );
+              startX += worldWidth;
+            }
+            world = 0;
+            startX = extent[2];
+            while (startX > projectionExtent[2]) {
+              ++world;
+              offsetX = worldWidth * world;
+              transforms.push(
+                this.getRenderTransform(
+                  center,
+                  resolution,
+                  rotation,
+                  HIT_DETECT_RESOLUTION,
+                  width,
+                  height,
+                  offsetX
+                ).slice()
+              );
+              startX -= worldWidth;
+            }
           }
-          world = 0;
-          startX = extent[2];
-          while (startX > projectionExtent[2]) {
-            ++world;
-            offsetX = worldWidth * world;
-            transforms.push(
-              this.getRenderTransform(
-                center,
-                resolution,
-                rotation,
-                HIT_DETECT_RESOLUTION,
-                width,
-                height,
-                offsetX
-              ).slice()
-            );
-            startX -= worldWidth;
-          }
-        }
 
-        this.hitDetectionImageData_ = createHitDetectionImageData(
-          size,
-          transforms,
-          this.renderedFeatures_,
-          layer.getStyleFunction(),
-          extent,
-          resolution,
-          rotation
+          this.hitDetectionImageData_ = createHitDetectionImageData(
+            size,
+            transforms,
+            this.renderedFeatures_,
+            layer.getStyleFunction(),
+            extent,
+            resolution,
+            rotation
+          );
+        }
+        resolve(
+          hitDetect(pixel, this.renderedFeatures_, this.hitDetectionImageData_)
         );
-      }
-      resolve(
-        hitDetect(pixel, this.renderedFeatures_, this.hitDetectionImageData_)
-      );
-    });
+      }.bind(this)
+    );
   }
 
   /**
    * @param {import("../../coordinate.js").Coordinate} coordinate Coordinate.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @param {number} hitTolerance Hit tolerance in pixels.
    * @param {import("../vector.js").FeatureCallback<T>} callback Feature callback.
    * @param {Array<import("../Map.js").HitMatch<T>>} matches The hit detected matches with tolerance.
@@ -529,7 +534,7 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
 
   /**
    * Determine whether render should be called.
-   * @param {import("../../Map.js").FrameState} frameState Frame state.
+   * @param {import("../../PluggableMap.js").FrameState} frameState Frame state.
    * @return {boolean} Layer is ready to be rendered.
    */
   prepareFrame(frameState) {
@@ -674,8 +679,9 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
     const render =
       /**
        * @param {import("../../Feature.js").default} feature Feature.
+       * @this {CanvasVectorLayerRenderer}
        */
-      (feature) => {
+      function (feature) {
         let styles;
         const styleFunction =
           feature.getStyleFunction() || vectorLayer.getStyleFunction();
@@ -693,7 +699,7 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
           );
           ready = ready && !dirty;
         }
-      };
+      }.bind(this);
 
     const userExtent = toUserExtent(extent, projection);
     /** @type {Array<import("../../Feature.js").default>} */
@@ -747,8 +753,8 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
    * @param {number} squaredTolerance Squared render tolerance.
    * @param {import("../../style/Style.js").default|Array<import("../../style/Style.js").default>} styles The style or array of styles.
    * @param {import("../../render/canvas/BuilderGroup.js").default} builderGroup Builder group.
-   * @param {import("../../proj.js").TransformFunction} [transform] Transform from user to view projection.
-   * @param {import("../../render/canvas/BuilderGroup.js").default} [declutterBuilderGroup] Builder for decluttering.
+   * @param {import("../../proj.js").TransformFunction} [opt_transform] Transform from user to view projection.
+   * @param {import("../../render/canvas/BuilderGroup.js").default} [opt_declutterBuilderGroup] Builder for decluttering.
    * @return {boolean} `true` if an image is loading.
    */
   renderFeature(
@@ -756,8 +762,8 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
     squaredTolerance,
     styles,
     builderGroup,
-    transform,
-    declutterBuilderGroup
+    opt_transform,
+    opt_declutterBuilderGroup
   ) {
     if (!styles) {
       return false;
@@ -772,8 +778,8 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
             styles[i],
             squaredTolerance,
             this.boundHandleStyleImageChange_,
-            transform,
-            declutterBuilderGroup
+            opt_transform,
+            opt_declutterBuilderGroup
           ) || loading;
       }
     } else {
@@ -783,8 +789,8 @@ class CanvasVectorLayerRenderer extends CanvasLayerRenderer {
         styles,
         squaredTolerance,
         this.boundHandleStyleImageChange_,
-        transform,
-        declutterBuilderGroup
+        opt_transform,
+        opt_declutterBuilderGroup
       );
     }
     return loading;

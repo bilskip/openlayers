@@ -2,6 +2,7 @@ import Collection from '../../../../../src/ol/Collection.js';
 import Layer from '../../../../../src/ol/layer/Layer.js';
 import LayerGroup from '../../../../../src/ol/layer/Group.js';
 import Source from '../../../../../src/ol/source/Source.js';
+import {assign} from '../../../../../src/ol/obj.js';
 import {getIntersection} from '../../../../../src/ol/extent.js';
 import {getUid} from '../../../../../src/ol/util.js';
 
@@ -530,9 +531,9 @@ describe('ol/layer/Group', function () {
       expect(layerStatesArray[0]).to.eql(layer1.getLayerState());
 
       // layer state should match except for layer reference
-      const layerState = Object.assign({}, layerStatesArray[0]);
+      const layerState = assign({}, layerStatesArray[0]);
       delete layerState.layer;
-      const groupState = Object.assign({}, group.getLayerState());
+      const groupState = assign({}, group.getLayerState());
       delete groupState.layer;
       expect(layerState).to.eql(groupState);
 
@@ -579,14 +580,14 @@ describe('ol/layer/Group', function () {
       // compare layer state to group state
 
       // layer state should match except for layer reference
-      let layerState = Object.assign({}, layerStatesArray[0]);
+      let layerState = assign({}, layerStatesArray[0]);
       delete layerState.layer;
-      const groupState = Object.assign({}, group.getLayerState());
+      const groupState = assign({}, group.getLayerState());
       delete groupState.layer;
       expect(layerState).to.eql(groupState);
 
       // layer state should be transformed (and we ignore layer reference)
-      layerState = Object.assign({}, layerStatesArray[1]);
+      layerState = assign({}, layerStatesArray[1]);
       delete layerState.layer;
       expect(layerState).to.eql({
         opacity: 0.25,

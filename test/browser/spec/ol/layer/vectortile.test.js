@@ -51,11 +51,6 @@ describe('ol.layer.VectorTile', function () {
         source: new VectorTileSource({}),
       });
       expect(layer.getRenderMode()).to.be('hybrid');
-      layer = new VectorTileLayer({
-        renderMode: 'image',
-        source: new VectorTileSource({}),
-      });
-      expect(layer.getRenderMode()).to.be('image');
       expect(function () {
         layer = new VectorTileLayer({
           renderMode: 'foo',
@@ -199,7 +194,7 @@ describe('ol.layer.VectorTile', function () {
       });
       const renderer = layer.getRenderer();
       const frameState =
-        /** @type {import("../../../../../src/ol/Map.js").FrameState} */ ({
+        /** @type {import("../../../../../src/ol/PluggableMap.js").FrameState} */ ({
           pixelRatio: 1,
           viewState: {
             zoom: zoom,

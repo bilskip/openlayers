@@ -30,13 +30,12 @@ function getImport(symbol, member) {
   if (
     member &&
     namedExport.length > 1 &&
-    (defaultExport.length <= 1 || defaultExport[0].includes('.'))
+    (defaultExport.length <= 1 || defaultExport[0].indexOf('.') !== -1)
   ) {
     const from = namedExport[0].replace(/^module\:/, './');
     const importName = from.replace(/[.\/]+/g, '_');
     return `import {${member} as ${importName}$${member}} from '${from}.js';`;
   }
-  return '';
 }
 
 /**
@@ -53,7 +52,7 @@ function formatSymbolExport(symbol, namespaces, imports) {
   const last = nsParts.length - 1;
   const imp = getImport(symbol, nsParts[last]);
   if (imp) {
-    const isNamed = parts[0].includes('.');
+    const isNamed = parts[0].indexOf('.') !== -1;
     const importName = isNamed
       ? '_' + nsParts.slice(0, last).join('_') + '$' + nsParts[last]
       : '$' + nsParts.join('$');
@@ -67,7 +66,6 @@ function formatSymbolExport(symbol, namespaces, imports) {
     imports[imp] = true;
     return line;
   }
-  return '';
 }
 
 /**
@@ -81,7 +79,7 @@ function generateExports(symbols) {
   const blocks = [];
   symbols.forEach(function (symbol) {
     const name = symbol.name;
-    if (!name.includes('#')) {
+    if (name.indexOf('#') == -1) {
       const imp = getImport(symbol);
       if (imp) {
         imports[imp] = true;

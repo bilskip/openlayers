@@ -7,7 +7,6 @@ import {
   closestOnSegment,
   equals as coordinatesEqual,
   createStringXY,
-  degreesToStringHDMS,
   format as formatCoordinate,
   rotate as rotateCoordinate,
   scale as scaleCoordinate,
@@ -217,26 +216,6 @@ describe('ol/coordinate.js', function () {
     });
   });
 
-  describe('degreesToStringHDMS', () => {
-    it('includes minutes and seconds if non-zero', () => {
-      expect(degreesToStringHDMS('NS', 10 + 30 / 60 + 30 / 3600)).to.be(
-        '10° 30′ 30″ N'
-      );
-    });
-
-    it('omits minutes if zero', () => {
-      expect(degreesToStringHDMS('NS', 10)).to.be('10° N');
-    });
-
-    it('includes minutes if seconds are non-zero', () => {
-      expect(degreesToStringHDMS('NS', 10 + 30 / 3600)).to.be('10° 00′ 30″ N');
-    });
-
-    it('omits seconds if zero', () => {
-      expect(degreesToStringHDMS('NS', 10.5)).to.be('10° 30′ N');
-    });
-  });
-
   describe('#toStringHDMS', function () {
     it('returns the empty string on undefined input', function () {
       const got = toStringHDMS();
@@ -246,16 +225,13 @@ describe('ol/coordinate.js', function () {
     it('formats with zero fractional digits as default', function () {
       const coord = [7.85, 47.983333];
       const got = toStringHDMS(coord);
-      const expected = '47° 59′ N 7° 51′ E';
+      const expected = '47° 59′ 00″ N 7° 51′ 00″ E';
       expect(got).to.be(expected);
     });
     it('formats with given fractional digits, if passed', function () {
-      const coord = [
-        10 + 20 / 60 + 0.3456 / 3600,
-        20 + 30 / 60 + 0.4321 / 3600,
-      ];
+      const coord = [7.85, 47.983333];
       const got = toStringHDMS(coord, 3);
-      const expected = '20° 30′ 00.432″ N 10° 20′ 00.346″ E';
+      const expected = '47° 58′ 59.999″ N 7° 51′ 00.000″ E';
       expect(got).to.be(expected);
     });
   });

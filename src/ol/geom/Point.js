@@ -15,11 +15,11 @@ import {squaredDistance as squaredDx} from '../math.js';
 class Point extends SimpleGeometry {
   /**
    * @param {import("../coordinate.js").Coordinate} coordinates Coordinates.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    */
-  constructor(coordinates, layout) {
+  constructor(coordinates, opt_layout) {
     super();
-    this.setCoordinates(coordinates, layout);
+    this.setCoordinates(coordinates, opt_layout);
   }
 
   /**
@@ -55,8 +55,9 @@ class Point extends SimpleGeometry {
       }
       closestPoint.length = stride;
       return squaredDistance;
+    } else {
+      return minSquaredDistance;
     }
-    return minSquaredDistance;
   }
 
   /**
@@ -98,11 +99,11 @@ class Point extends SimpleGeometry {
 
   /**
    * @param {!Array<*>} coordinates Coordinates.
-   * @param {import("./Geometry.js").GeometryLayout} [layout] Layout.
+   * @param {import("./GeometryLayout.js").default} [opt_layout] Layout.
    * @api
    */
-  setCoordinates(coordinates, layout) {
-    this.setLayout(layout, coordinates, 0);
+  setCoordinates(coordinates, opt_layout) {
+    this.setLayout(opt_layout, coordinates, 0);
     if (!this.flatCoordinates) {
       this.flatCoordinates = [];
     }

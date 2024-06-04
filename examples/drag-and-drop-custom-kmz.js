@@ -16,7 +16,7 @@ const zip = new JSZip();
 function getKMLData(buffer) {
   let kmlData;
   zip.load(buffer);
-  const kmlFile = zip.file(/\.kml$/i)[0];
+  const kmlFile = zip.file(/.kml$/i)[0];
   if (kmlFile) {
     kmlData = kmlFile.asText();
   }
@@ -24,14 +24,17 @@ function getKMLData(buffer) {
 }
 
 function getKMLImage(href) {
-  const index = window.location.href.lastIndexOf('/');
-  if (index !== -1) {
-    const kmlFile = zip.file(href.slice(index + 1));
+  let url = href;
+  let path = window.location.href;
+  path = path.slice(0, path.lastIndexOf('/') + 1);
+  if (href.indexOf(path) === 0) {
+    const regexp = new RegExp(href.replace(path, '') + '$', 'i');
+    const kmlFile = zip.file(regexp)[0];
     if (kmlFile) {
-      return URL.createObjectURL(new Blob([kmlFile.asArrayBuffer()]));
+      url = URL.createObjectURL(new Blob([kmlFile.asArrayBuffer()]));
     }
   }
-  return href;
+  return url;
 }
 
 // Define a KMZ format class by subclassing ol/format/KML
@@ -136,9 +139,14 @@ function download(fullpath, filename) {
       return response.blob();
     })
     .then(function (blob) {
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
+      if (navigator.msSaveBlob) {
+        // link download attribute does not work on MS browsers
+        navigator.msSaveBlob(blob, filename);
+      } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      }
     });
 }
 

@@ -36,7 +36,7 @@ import {assert} from '../asserts.js';
  * 1. The pixel coordinates of the geometry in GeoJSON notation.
  * 2. The {@link module:ol/render~State} of the layer renderer.
  *
- * @typedef {function((import("../coordinate.js").Coordinate|Array<import("../coordinate.js").Coordinate>|Array<Array<import("../coordinate.js").Coordinate>>|Array<Array<Array<import("../coordinate.js").Coordinate>>>),import("../render.js").State): void} RenderFunction
+ * @typedef {function((import("../coordinate.js").Coordinate|Array<import("../coordinate.js").Coordinate>|Array<Array<import("../coordinate.js").Coordinate>>),import("../render.js").State): void} RenderFunction
  */
 
 /**
@@ -64,7 +64,7 @@ import {assert} from '../asserts.js';
  *
  * If no style is defined, the following default style is used:
  * ```js
- *  import {Circle, Fill, Stroke, Style} from 'ol/style.js';
+ *  import {Circle, Fill, Stroke, Style} from 'ol/style';
  *
  *  const fill = new Fill({
  *    color: 'rgba(255,255,255,0.4)',
@@ -88,7 +88,7 @@ import {assert} from '../asserts.js';
  *
  * A separate editing style has the following defaults:
  * ```js
- *  import {Circle, Fill, Stroke, Style} from 'ol/style.js';
+ *  import {Circle, Fill, Stroke, Style} from 'ol/style';
  *
  *  const styles = {};
  *  const white = [255, 255, 255, 1];
@@ -151,10 +151,10 @@ import {assert} from '../asserts.js';
  */
 class Style {
   /**
-   * @param {Options} [options] Style options.
+   * @param {Options} [opt_options] Style options.
    */
-  constructor(options) {
-    options = options || {};
+  constructor(opt_options) {
+    const options = opt_options || {};
 
     /**
      * @private

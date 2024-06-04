@@ -8,11 +8,13 @@ import MapBrowserEventType from './MapBrowserEventType.js';
 import PointerEventType from './pointer/EventType.js';
 import Target from './events/Target.js';
 import {PASSIVE_EVENT_LISTENERS} from './has.js';
+import {VOID} from './functions.js';
+import {getValues} from './obj.js';
 import {listen, unlistenByKey} from './events.js';
 
 class MapBrowserEventHandler extends Target {
   /**
-   * @param {import("./Map.js").default} map The map with the viewport to listen to events on.
+   * @param {import("./PluggableMap.js").default} map The map with the viewport to listen to events on.
    * @param {number} [moveTolerance] The minimal distance the pointer must travel to trigger a move.
    */
   constructor(map, moveTolerance) {
@@ -20,13 +22,13 @@ class MapBrowserEventHandler extends Target {
 
     /**
      * This is the element that we will listen to the real events on.
-     * @type {import("./Map.js").default}
+     * @type {import("./PluggableMap.js").default}
      * @private
      */
     this.map_ = map;
 
     /**
-     * @type {ReturnType<typeof setTimeout>}
+     * @type {any}
      * @private
      */
     this.clickTimeoutId_;
@@ -143,15 +145,19 @@ class MapBrowserEventHandler extends Target {
       this.dispatchEvent(newEvent);
     } else {
       // click
-      this.clickTimeoutId_ = setTimeout(() => {
-        this.clickTimeoutId_ = undefined;
-        const newEvent = new MapBrowserEvent(
-          MapBrowserEventType.SINGLECLICK,
-          this.map_,
-          pointerEvent
-        );
-        this.dispatchEvent(newEvent);
-      }, 250);
+      this.clickTimeoutId_ = setTimeout(
+        /** @this {MapBrowserEventHandler} */
+        function () {
+          this.clickTimeoutId_ = undefined;
+          const newEvent = new MapBrowserEvent(
+            MapBrowserEventType.SINGLECLICK,
+            this.map_,
+            pointerEvent
+          );
+          this.dispatchEvent(newEvent);
+        }.bind(this),
+        250
+      );
     }
   }
 
@@ -187,7 +193,7 @@ class MapBrowserEventHandler extends Target {
     ) {
       this.trackedTouches_[id] = event;
     }
-    this.activePointers_ = Object.values(this.trackedTouches_);
+    this.activePointers_ = getValues(this.trackedTouches_);
   }
 
   /**
@@ -258,11 +264,12 @@ class MapBrowserEventHandler extends Target {
     );
     this.dispatchEvent(newEvent);
 
-    this.down_ = new PointerEvent(pointerEvent.type, pointerEvent);
-    Object.defineProperty(this.down_, 'target', {
-      writable: false,
-      value: pointerEvent.target,
-    });
+    // Store a copy of the down event
+    this.down_ = /** @type {PointerEvent} */ ({});
+    for (const property in pointerEvent) {
+      const value = pointerEvent[property];
+      this.down_[property] = typeof value === 'function' ? VOID : value;
+    }
 
     if (this.dragListenerKeys_.length === 0) {
       const doc = this.map_.getOwnerDocument();
@@ -360,8 +367,7 @@ class MapBrowserEventHandler extends Target {
    */
   handleTouchMove_(event) {
     // Due to https://github.com/mpizenberg/elm-pep/issues/2, `this.originalPointerMoveEvent_`
-    // may not be initialized yet when we get here on a platform without native pointer events,
-    // when elm-pep is used as pointer events polyfill.
+    // may not be initialized yet when we get here on a platform without native pointer events.
     const originalEvent = this.originalPointerMoveEvent_;
     if (
       (!originalEvent || originalEvent.defaultPrevented) &&

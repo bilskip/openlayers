@@ -232,17 +232,13 @@ class TileSource extends Source {
   }
 
   /**
-   * @param {import("../proj/Projection").default} [projection] Projection.
    * @return {Array<number>|null} Resolutions.
    */
-  getResolutions(projection) {
-    const tileGrid = projection
-      ? this.getTileGridForProjection(projection)
-      : this.tileGrid;
-    if (!tileGrid) {
+  getResolutions() {
+    if (!this.tileGrid) {
       return null;
     }
-    return tileGrid.getResolutions();
+    return this.tileGrid.getResolutions();
   }
 
   /**
@@ -274,8 +270,9 @@ class TileSource extends Source {
   getTileGridForProjection(projection) {
     if (!this.tileGrid) {
       return getTileGridForProjection(projection);
+    } else {
+      return this.tileGrid;
     }
-    return this.tileGrid;
   }
 
   /**
@@ -315,8 +312,9 @@ class TileSource extends Source {
     const tileSize = toSize(tileGrid.getTileSize(z), this.tmpSize);
     if (tilePixelRatio == 1) {
       return tileSize;
+    } else {
+      return scaleSize(tileSize, tilePixelRatio, this.tmpSize);
     }
-    return scaleSize(tileSize, tilePixelRatio, this.tmpSize);
   }
 
   /**
@@ -324,12 +322,13 @@ class TileSource extends Source {
    * is outside the resolution and extent range of the tile grid, `null` will be
    * returned.
    * @param {import("../tilecoord.js").TileCoord} tileCoord Tile coordinate.
-   * @param {import("../proj/Projection.js").default} [projection] Projection.
+   * @param {import("../proj/Projection.js").default} [opt_projection] Projection.
    * @return {import("../tilecoord.js").TileCoord} Tile coordinate to be passed to the tileUrlFunction or
    *     null if no tile URL should be created for the passed `tileCoord`.
    */
-  getTileCoordForTileUrlFunction(tileCoord, projection) {
-    projection = projection !== undefined ? projection : this.getProjection();
+  getTileCoordForTileUrlFunction(tileCoord, opt_projection) {
+    const projection =
+      opt_projection !== undefined ? opt_projection : this.getProjection();
     const tileGrid = this.getTileGridForProjection(projection);
     if (this.getWrapX() && projection.isGlobal()) {
       tileCoord = wrapX(tileGrid, tileCoord, projection);

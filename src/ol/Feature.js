@@ -49,24 +49,24 @@ import {listen, unlistenByKey} from './events.js';
  *
  * ```js
  *
- * import Feature from 'ol/Feature.js';
- * import Polygon from 'ol/geom/Polygon.js';
- * import Point from 'ol/geom/Point.js';
+ * import Feature from 'ol/Feature';
+ * import Polygon from 'ol/geom/Polygon';
+ * import Point from 'ol/geom/Point';
  *
- * const feature = new Feature({
+ * var feature = new Feature({
  *   geometry: new Polygon(polyCoords),
  *   labelPoint: new Point(labelCoords),
- *   name: 'My Polygon',
+ *   name: 'My Polygon'
  * });
  *
  * // get the polygon geometry
- * const poly = feature.getGeometry();
+ * var poly = feature.getGeometry();
  *
  * // Render the feature as a point using the coordinates from labelPoint
  * feature.setGeometryName('labelPoint');
  *
  * // get the point geometry
- * const point = feature.getGeometry();
+ * var point = feature.getGeometry();
  * ```
  *
  * @api
@@ -74,12 +74,12 @@ import {listen, unlistenByKey} from './events.js';
  */
 class Feature extends BaseObject {
   /**
-   * @param {Geometry|ObjectWithGeometry<Geometry>} [geometryOrProperties]
+   * @param {Geometry|ObjectWithGeometry<Geometry>} [opt_geometryOrProperties]
    *     You may pass a Geometry object directly, or an object literal containing
    *     properties. If you pass an object literal, you may include a Geometry
    *     associated with a `geometry` key.
    */
-  constructor(geometryOrProperties) {
+  constructor(opt_geometryOrProperties) {
     super();
 
     /***
@@ -130,17 +130,17 @@ class Feature extends BaseObject {
 
     this.addChangeListener(this.geometryName_, this.handleGeometryChanged_);
 
-    if (geometryOrProperties) {
+    if (opt_geometryOrProperties) {
       if (
         typeof (
-          /** @type {?} */ (geometryOrProperties).getSimplifiedGeometry
+          /** @type {?} */ (opt_geometryOrProperties).getSimplifiedGeometry
         ) === 'function'
       ) {
-        const geometry = /** @type {Geometry} */ (geometryOrProperties);
+        const geometry = /** @type {Geometry} */ (opt_geometryOrProperties);
         this.setGeometry(geometry);
       } else {
         /** @type {Object<string, *>} */
-        const properties = geometryOrProperties;
+        const properties = opt_geometryOrProperties;
         this.setProperties(properties);
       }
     }
@@ -265,13 +265,15 @@ class Feature extends BaseObject {
    * single style object, an array of styles, or a function that takes a
    * resolution and returns an array of styles. To unset the feature style, call
    * `setStyle()` without arguments or a falsey value.
-   * @param {import("./style/Style.js").StyleLike} [style] Style for this feature.
+   * @param {import("./style/Style.js").StyleLike} [opt_style] Style for this feature.
    * @api
    * @fires module:ol/events/Event~BaseEvent#event:change
    */
-  setStyle(style) {
-    this.style_ = style;
-    this.styleFunction_ = !style ? undefined : createStyleFunction(style);
+  setStyle(opt_style) {
+    this.style_ = opt_style;
+    this.styleFunction_ = !opt_style
+      ? undefined
+      : createStyleFunction(opt_style);
     this.changed();
   }
 
@@ -315,20 +317,21 @@ class Feature extends BaseObject {
 export function createStyleFunction(obj) {
   if (typeof obj === 'function') {
     return obj;
-  }
-  /**
-   * @type {Array<import("./style/Style.js").default>}
-   */
-  let styles;
-  if (Array.isArray(obj)) {
-    styles = obj;
   } else {
-    assert(typeof (/** @type {?} */ (obj).getZIndex) === 'function', 41); // Expected an `import("./style/Style.js").Style` or an array of `import("./style/Style.js").Style`
-    const style = /** @type {import("./style/Style.js").default} */ (obj);
-    styles = [style];
+    /**
+     * @type {Array<import("./style/Style.js").default>}
+     */
+    let styles;
+    if (Array.isArray(obj)) {
+      styles = obj;
+    } else {
+      assert(typeof (/** @type {?} */ (obj).getZIndex) === 'function', 41); // Expected an `import("./style/Style.js").Style` or an array of `import("./style/Style.js").Style`
+      const style = /** @type {import("./style/Style.js").default} */ (obj);
+      styles = [style];
+    }
+    return function () {
+      return styles;
+    };
   }
-  return function () {
-    return styles;
-  };
 }
 export default Feature;

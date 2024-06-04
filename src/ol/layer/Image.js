@@ -18,10 +18,10 @@ import CanvasImageLayerRenderer from '../renderer/canvas/ImageLayer.js';
  */
 class ImageLayer extends BaseImageLayer {
   /**
-   * @param {import("./BaseImage.js").Options<ImageSourceType>} [options] Layer options.
+   * @param {import("./BaseImage.js").Options<ImageSourceType>} [opt_options] Layer options.
    */
-  constructor(options) {
-    super(options);
+  constructor(opt_options) {
+    super(opt_options);
   }
 
   createRenderer() {

@@ -4,7 +4,10 @@
 import Feature from '../Feature.js';
 import Fill from '../style/Fill.js';
 import GeometryCollection from '../geom/GeometryCollection.js';
+import GeometryLayout from '../geom/GeometryLayout.js';
 import Icon from '../style/Icon.js';
+import IconAnchorUnits from '../style/IconAnchorUnits.js';
+import IconOrigin from '../style/IconOrigin.js';
 import ImageState from '../ImageState.js';
 import LineString from '../geom/LineString.js';
 import MultiLineString from '../geom/MultiLineString.js';
@@ -37,7 +40,7 @@ import {
 } from '../xml.js';
 import {asArray} from '../color.js';
 import {assert} from '../asserts.js';
-import {extend} from '../array.js';
+import {extend, includes} from '../array.js';
 import {get as getProjection} from '../proj.js';
 import {
   readBoolean,
@@ -54,10 +57,10 @@ import {transformGeometryWithOptions} from './Feature.js';
 /**
  * @typedef {Object} Vec2
  * @property {number} x X coordinate.
- * @property {import("../style/Icon.js").IconAnchorUnits} xunits Units of x.
+ * @property {import("../style/IconAnchorUnits").default} xunits Units of x.
  * @property {number} y Y coordinate.
- * @property {import("../style/Icon.js").IconAnchorUnits} yunits Units of Y.
- * @property {import("../style/Icon.js").IconOrigin} [origin] Origin.
+ * @property {import("../style/IconAnchorUnits").default} yunits Units of Y.
+ * @property {import("../style/IconOrigin.js").default} [origin] Origin.
  */
 
 /**
@@ -93,12 +96,12 @@ const SCHEMA_LOCATION =
   'https://developers.google.com/kml/schema/kml22gx.xsd';
 
 /**
- * @type {Object<string, import("../style/Icon.js").IconAnchorUnits>}
+ * @type {Object<string, import("../style/IconAnchorUnits").default>}
  */
 const ICON_ANCHOR_UNITS_MAP = {
-  'fraction': 'fraction',
-  'pixels': 'pixels',
-  'insetPixels': 'pixels',
+  'fraction': IconAnchorUnits.FRACTION,
+  'pixels': IconAnchorUnits.PIXELS,
+  'insetPixels': IconAnchorUnits.PIXELS,
 };
 
 /**
@@ -163,21 +166,6 @@ const LINK_PARSERS = makeStructureNS(NAMESPACE_URIS, {
  * @type {Object<string, Object<string, import("../xml.js").Parser>>}
  */
 // @ts-ignore
-const CAMERA_PARSERS = makeStructureNS(NAMESPACE_URIS, {
-  Altitude: makeObjectPropertySetter(readDecimal),
-  Longitude: makeObjectPropertySetter(readDecimal),
-  Latitude: makeObjectPropertySetter(readDecimal),
-  Tilt: makeObjectPropertySetter(readDecimal),
-  AltitudeMode: makeObjectPropertySetter(readString),
-  Heading: makeObjectPropertySetter(readDecimal),
-  Roll: makeObjectPropertySetter(readDecimal),
-});
-
-/**
- * @const
- * @type {Object<string, Object<string, import("../xml.js").Parser>>}
- */
-// @ts-ignore
 const REGION_PARSERS = makeStructureNS(NAMESPACE_URIS, {
   'LatLonAltBox': latLonAltBoxParser,
   'Lod': lodParser,
@@ -224,12 +212,12 @@ export function getDefaultFillStyle() {
 let DEFAULT_IMAGE_STYLE_ANCHOR;
 
 /**
- * @type {import("../style/Icon.js").IconAnchorUnits}
+ * @type {import("../style/IconAnchorUnits").default}
  */
 let DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS;
 
 /**
- * @type {import("../style/Icon.js").IconAnchorUnits}
+ * @type {import("../style/IconAnchorUnits").default}
  */
 let DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS;
 
@@ -336,9 +324,9 @@ function createStyleDefaults() {
 
   DEFAULT_IMAGE_STYLE_ANCHOR = [20, 2];
 
-  DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS = 'pixels';
+  DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS = IconAnchorUnits.PIXELS;
 
-  DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS = 'pixels';
+  DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS = IconAnchorUnits.PIXELS;
 
   DEFAULT_IMAGE_STYLE_SIZE = [64, 64];
 
@@ -347,7 +335,7 @@ function createStyleDefaults() {
 
   DEFAULT_IMAGE_STYLE = new Icon({
     anchor: DEFAULT_IMAGE_STYLE_ANCHOR,
-    anchorOrigin: 'bottom-left',
+    anchorOrigin: IconOrigin.BOTTOM_LEFT,
     anchorXUnits: DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS,
     anchorYUnits: DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS,
     crossOrigin: 'anonymous',
@@ -434,16 +422,19 @@ function defaultIconUrlFunction(href) {
  * geometry types, and into MultiPoint/MultiLineString/MultiPolygon if they are
  * all of the same type.
  *
+ * Note that the KML format uses the URL() constructor. Older browsers such as IE
+ * which do not support this will need a URL polyfill to be loaded before use.
+ *
  * @api
  */
 class KML extends XMLFeature {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     if (!DEFAULT_STYLE_ARRAY) {
       createStyleDefaults();
@@ -524,8 +515,9 @@ class KML extends XMLFeature {
     const features = pushParseAndPop([], parsersNS, node, objectStack, this);
     if (features) {
       return features;
+    } else {
+      return undefined;
     }
-    return undefined;
   }
 
   /**
@@ -638,63 +630,65 @@ class KML extends XMLFeature {
 
   /**
    * @param {Element} node Node.
-   * @param {import("./Feature.js").ReadOptions} [options] Options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Options.
    * @return {import("../Feature.js").default} Feature.
    */
-  readFeatureFromNode(node, options) {
-    if (!NAMESPACE_URIS.includes(node.namespaceURI)) {
+  readFeatureFromNode(node, opt_options) {
+    if (!includes(NAMESPACE_URIS, node.namespaceURI)) {
       return null;
     }
     const feature = this.readPlacemark_(node, [
-      this.getReadOptions(node, options),
+      this.getReadOptions(node, opt_options),
     ]);
     if (feature) {
       return feature;
+    } else {
+      return null;
     }
-    return null;
   }
 
   /**
    * @protected
    * @param {Element} node Node.
-   * @param {import("./Feature.js").ReadOptions} [options] Options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Options.
    * @return {Array<import("../Feature.js").default>} Features.
    */
-  readFeaturesFromNode(node, options) {
-    if (!NAMESPACE_URIS.includes(node.namespaceURI)) {
+  readFeaturesFromNode(node, opt_options) {
+    if (!includes(NAMESPACE_URIS, node.namespaceURI)) {
       return [];
     }
     let features;
     const localName = node.localName;
     if (localName == 'Document' || localName == 'Folder') {
       features = this.readDocumentOrFolder_(node, [
-        this.getReadOptions(node, options),
+        this.getReadOptions(node, opt_options),
       ]);
       if (features) {
         return features;
+      } else {
+        return [];
       }
-      return [];
-    }
-    if (localName == 'Placemark') {
+    } else if (localName == 'Placemark') {
       const feature = this.readPlacemark_(node, [
-        this.getReadOptions(node, options),
+        this.getReadOptions(node, opt_options),
       ]);
       if (feature) {
         return [feature];
+      } else {
+        return [];
       }
-      return [];
-    }
-    if (localName == 'kml') {
+    } else if (localName == 'kml') {
       features = [];
       for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
-        const fs = this.readFeaturesFromNode(n, options);
+        const fs = this.readFeaturesFromNode(n, opt_options);
         if (fs) {
           extend(features, fs);
         }
       }
       return features;
+    } else {
+      return [];
     }
-    return [];
   }
 
   /**
@@ -707,15 +701,14 @@ class KML extends XMLFeature {
   readName(source) {
     if (!source) {
       return undefined;
-    }
-    if (typeof source === 'string') {
+    } else if (typeof source === 'string') {
       const doc = parse(source);
       return this.readNameFromDocument(doc);
-    }
-    if (isDocument(source)) {
+    } else if (isDocument(source)) {
       return this.readNameFromDocument(/** @type {Document} */ (source));
+    } else {
+      return this.readNameFromNode(/** @type {Element} */ (source));
     }
-    return this.readNameFromNode(/** @type {Element} */ (source));
   }
 
   /**
@@ -740,14 +733,14 @@ class KML extends XMLFeature {
    */
   readNameFromNode(node) {
     for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
-      if (NAMESPACE_URIS.includes(n.namespaceURI) && n.localName == 'name') {
+      if (includes(NAMESPACE_URIS, n.namespaceURI) && n.localName == 'name') {
         return readString(n);
       }
     }
     for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
       const localName = n.localName;
       if (
-        NAMESPACE_URIS.includes(n.namespaceURI) &&
+        includes(NAMESPACE_URIS, n.namespaceURI) &&
         (localName == 'Document' ||
           localName == 'Folder' ||
           localName == 'Placemark' ||
@@ -813,7 +806,7 @@ class KML extends XMLFeature {
     const networkLinks = [];
     for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
       if (
-        NAMESPACE_URIS.includes(n.namespaceURI) &&
+        includes(NAMESPACE_URIS, n.namespaceURI) &&
         n.localName == 'NetworkLink'
       ) {
         const obj = pushParseAndPop({}, NETWORK_LINK_PARSERS, n, []);
@@ -823,7 +816,7 @@ class KML extends XMLFeature {
     for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
       const localName = n.localName;
       if (
-        NAMESPACE_URIS.includes(n.namespaceURI) &&
+        includes(NAMESPACE_URIS, n.namespaceURI) &&
         (localName == 'Document' || localName == 'Folder' || localName == 'kml')
       ) {
         extend(networkLinks, this.readNetworkLinksFromNode(n));
@@ -877,7 +870,7 @@ class KML extends XMLFeature {
   readRegionFromNode(node) {
     const regions = [];
     for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
-      if (NAMESPACE_URIS.includes(n.namespaceURI) && n.localName == 'Region') {
+      if (includes(NAMESPACE_URIS, n.namespaceURI) && n.localName == 'Region') {
         const obj = pushParseAndPop({}, REGION_PARSERS, n, []);
         regions.push(obj);
       }
@@ -885,7 +878,7 @@ class KML extends XMLFeature {
     for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
       const localName = n.localName;
       if (
-        NAMESPACE_URIS.includes(n.namespaceURI) &&
+        includes(NAMESPACE_URIS, n.namespaceURI) &&
         (localName == 'Document' || localName == 'Folder' || localName == 'kml')
       ) {
         extend(regions, this.readRegionFromNode(n));
@@ -895,92 +888,16 @@ class KML extends XMLFeature {
   }
 
   /**
-   * @typedef {Object} KMLCamera Specifies the observer's viewpoint and associated view parameters.
-   * @property {number} [Latitude] Latitude of the camera.
-   * @property {number} [Longitude] Longitude of the camera.
-   * @property {number} [Altitude] Altitude of the camera.
-   * @property {string} [AltitudeMode] Floor-related altitude mode.
-   * @property {number} [Heading] Horizontal camera rotation.
-   * @property {number} [Tilt] Lateral camera rotation.
-   * @property {number} [Roll] Vertical camera rotation.
-   */
-
-  /**
-   * Read the cameras of the KML.
-   *
-   * @param {Document|Element|string} source Source.
-   * @return {Array<KMLCamera>} Cameras.
-   * @api
-   */
-  readCamera(source) {
-    const cameras = [];
-    if (typeof source === 'string') {
-      const doc = parse(source);
-      extend(cameras, this.readCameraFromDocument(doc));
-    } else if (isDocument(source)) {
-      extend(
-        cameras,
-        this.readCameraFromDocument(/** @type {Document} */ (source))
-      );
-    } else {
-      extend(cameras, this.readCameraFromNode(/** @type {Element} */ (source)));
-    }
-    return cameras;
-  }
-
-  /**
-   * @param {Document} doc Document.
-   * @return {Array<KMLCamera>} Cameras.
-   */
-  readCameraFromDocument(doc) {
-    const cameras = [];
-    for (let n = /** @type {Node} */ (doc.firstChild); n; n = n.nextSibling) {
-      if (n.nodeType === Node.ELEMENT_NODE) {
-        extend(cameras, this.readCameraFromNode(/** @type {Element} */ (n)));
-      }
-    }
-    return cameras;
-  }
-
-  /**
-   * @param {Element} node Node.
-   * @return {Array<KMLCamera>} Cameras.
-   * @api
-   */
-  readCameraFromNode(node) {
-    const cameras = [];
-    for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
-      if (NAMESPACE_URIS.includes(n.namespaceURI) && n.localName === 'Camera') {
-        const obj = pushParseAndPop({}, CAMERA_PARSERS, n, []);
-        cameras.push(obj);
-      }
-    }
-    for (let n = node.firstElementChild; n; n = n.nextElementSibling) {
-      const localName = n.localName;
-      if (
-        NAMESPACE_URIS.includes(n.namespaceURI) &&
-        (localName === 'Document' ||
-          localName === 'Folder' ||
-          localName === 'Placemark' ||
-          localName === 'kml')
-      ) {
-        extend(cameras, this.readCameraFromNode(n));
-      }
-    }
-    return cameras;
-  }
-
-  /**
    * Encode an array of features in the KML format as an XML node. GeometryCollections,
    * MultiPoints, MultiLineStrings, and MultiPolygons are output as MultiGeometries.
    *
    * @param {Array<Feature>} features Features.
-   * @param {import("./Feature.js").WriteOptions} [options] Options.
+   * @param {import("./Feature.js").WriteOptions} [opt_options] Options.
    * @return {Node} Node.
    * @api
    */
-  writeFeaturesNode(features, options) {
-    options = this.adaptOptions(options);
+  writeFeaturesNode(features, opt_options) {
+    opt_options = this.adaptOptions(opt_options);
     const kml = createElementNS(NAMESPACE_URIS[4], 'kml');
     const xmlnsUri = 'http://www.w3.org/2000/xmlns/';
     kml.setAttributeNS(xmlnsUri, 'xmlns:gx', GX_NAMESPACE_URIS[0]);
@@ -1008,7 +925,7 @@ class KML extends XMLFeature {
       KML_SERIALIZERS,
       OBJECT_PROPERTY_NODE_FACTORY,
       values,
-      [options],
+      [opt_options],
       orderedKeys,
       this
     );
@@ -1023,7 +940,6 @@ class KML extends XMLFeature {
  */
 function createNameStyleFunction(foundStyle, name) {
   const textOffset = [0, 0];
-  /** @type {CanvasTextAlign} */
   let textAlign = 'start';
   const imageStyle = foundStyle.getImage();
   if (imageStyle) {
@@ -1109,7 +1025,7 @@ function createFeatureStyleFunction(
         name = /** @type {string} */ (feature.get('name'));
         drawName = drawName && !!name;
         // convert any html character codes
-        if (drawName && /&[^&]+;/.test(name)) {
+        if (drawName && name.search(/&[^&]+;/) > -1) {
           if (!TEXTAREA) {
             TEXTAREA = document.createElement('textarea');
           }
@@ -1157,11 +1073,11 @@ function createFeatureStyleFunction(
 function findStyle(styleValue, defaultStyle, sharedStyles) {
   if (Array.isArray(styleValue)) {
     return styleValue;
-  }
-  if (typeof styleValue === 'string') {
+  } else if (typeof styleValue === 'string') {
     return findStyle(sharedStyles[styleValue], defaultStyle, sharedStyles);
+  } else {
+    return defaultStyle;
   }
-  return defaultStyle;
 }
 
 /**
@@ -1181,8 +1097,9 @@ function readColor(node) {
       parseInt(hexColor.substr(2, 2), 16),
       parseInt(hexColor.substr(0, 2), 16) / 255,
     ];
+  } else {
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -1224,8 +1141,9 @@ function readURI(node) {
   if (baseURI) {
     const url = new URL(s, baseURI);
     return url.href;
+  } else {
+    return s;
   }
-  return s;
 }
 
 /**
@@ -1245,8 +1163,9 @@ function readStyleURL(node) {
   if (baseURI) {
     const url = new URL(s, baseURI);
     return url.href;
+  } else {
+    return s;
   }
-  return s;
 }
 
 /**
@@ -1256,19 +1175,18 @@ function readStyleURL(node) {
 function readVec2(node) {
   const xunits = node.getAttribute('xunits');
   const yunits = node.getAttribute('yunits');
-  /** @type {import('../style/Icon.js').IconOrigin} */
   let origin;
   if (xunits !== 'insetPixels') {
     if (yunits !== 'insetPixels') {
-      origin = 'bottom-left';
+      origin = IconOrigin.BOTTOM_LEFT;
     } else {
-      origin = 'top-left';
+      origin = IconOrigin.TOP_LEFT;
     }
   } else {
     if (yunits !== 'insetPixels') {
-      origin = 'bottom-right';
+      origin = IconOrigin.BOTTOM_RIGHT;
     } else {
-      origin = 'top-right';
+      origin = IconOrigin.TOP_RIGHT;
     }
   }
   return {
@@ -1349,25 +1267,24 @@ function iconStyleParser(node, objectStack) {
     src = DEFAULT_IMAGE_STYLE_SRC;
   }
   let anchor, anchorXUnits, anchorYUnits;
-  /** @type {import('../style/Icon.js').IconOrigin|undefined} */
-  let anchorOrigin = 'bottom-left';
+  let anchorOrigin = IconOrigin.BOTTOM_LEFT;
   const hotSpot = /** @type {Vec2|undefined} */ (object['hotSpot']);
   if (hotSpot) {
     anchor = [hotSpot.x, hotSpot.y];
     anchorXUnits = hotSpot.xunits;
     anchorYUnits = hotSpot.yunits;
     anchorOrigin = hotSpot.origin;
-  } else if (/^https?:\/\/maps\.(?:google|gstatic)\.com\//.test(src)) {
+  } else if (/^http:\/\/maps\.(?:google|gstatic)\.com\//.test(src)) {
     // Google hotspots from https://kml4earth.appspot.com/icons.html#notes
-    if (src.includes('pushpin')) {
+    if (/pushpin/.test(src)) {
       anchor = DEFAULT_IMAGE_STYLE_ANCHOR;
       anchorXUnits = DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS;
       anchorYUnits = DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS;
-    } else if (src.includes('arrow-reverse')) {
+    } else if (/arrow-reverse/.test(src)) {
       anchor = [54, 42];
       anchorXUnits = DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS;
       anchorYUnits = DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS;
-    } else if (src.includes('paddle')) {
+    } else if (/paddle/.test(src)) {
       anchor = [32, 1];
       anchorXUnits = DEFAULT_IMAGE_STYLE_ANCHOR_X_UNITS;
       anchorYUnits = DEFAULT_IMAGE_STYLE_ANCHOR_Y_UNITS;
@@ -1410,7 +1327,7 @@ function iconStyleParser(node, objectStack) {
       anchorYUnits: anchorYUnits,
       crossOrigin: this.crossOrigin_,
       offset: offset,
-      offsetOrigin: 'bottom-left',
+      offsetOrigin: IconOrigin.BOTTOM_LEFT,
       rotation: rotation,
       scale: scale,
       size: size,
@@ -1677,7 +1594,7 @@ function readGxTrack(node, objectStack) {
       );
     }
   }
-  return new LineString(flatCoordinates, 'XYZM');
+  return new LineString(flatCoordinates, GeometryLayout.XYZM);
 }
 
 /**
@@ -1707,8 +1624,9 @@ function readIcon(node, objectStack) {
   const iconObject = pushParseAndPop({}, ICON_PARSERS, node, objectStack);
   if (iconObject) {
     return iconObject;
+  } else {
+    return null;
   }
-  return null;
 }
 
 /**
@@ -1759,11 +1677,12 @@ function readLineString(node, objectStack) {
   );
   const flatCoordinates = readFlatCoordinatesFromNode(node, objectStack);
   if (flatCoordinates) {
-    const lineString = new LineString(flatCoordinates, 'XYZ');
+    const lineString = new LineString(flatCoordinates, GeometryLayout.XYZ);
     lineString.setProperties(properties, true);
     return lineString;
+  } else {
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -1780,13 +1699,14 @@ function readLinearRing(node, objectStack) {
   );
   const flatCoordinates = readFlatCoordinatesFromNode(node, objectStack);
   if (flatCoordinates) {
-    const polygon = new Polygon(flatCoordinates, 'XYZ', [
+    const polygon = new Polygon(flatCoordinates, GeometryLayout.XYZ, [
       flatCoordinates.length,
     ]);
     polygon.setProperties(properties, true);
     return polygon;
+  } else {
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -1875,11 +1795,12 @@ function readPoint(node, objectStack) {
   );
   const flatCoordinates = readFlatCoordinatesFromNode(node, objectStack);
   if (flatCoordinates) {
-    const point = new Point(flatCoordinates, 'XYZ');
+    const point = new Point(flatCoordinates, GeometryLayout.XYZ);
     point.setProperties(properties, true);
     return point;
+  } else {
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -1917,11 +1838,12 @@ function readPolygon(node, objectStack) {
       extend(flatCoordinates, flatLinearRings[i]);
       ends.push(flatCoordinates.length);
     }
-    const polygon = new Polygon(flatCoordinates, 'XYZ', ends);
+    const polygon = new Polygon(flatCoordinates, GeometryLayout.XYZ, ends);
     polygon.setProperties(properties, true);
     return polygon;
+  } else {
+    return undefined;
   }
-  return undefined;
 }
 
 /**
@@ -1965,9 +1887,7 @@ function readStyle(node, objectStack) {
   let imageStyle;
   if ('imageStyle' in styleObject) {
     if (styleObject['imageStyle'] != DEFAULT_NO_IMAGE_STYLE) {
-      imageStyle = /** @type {import("../style/Image.js").default} */ (
-        styleObject['imageStyle']
-      );
+      imageStyle = styleObject['imageStyle'];
     }
   } else {
     imageStyle = DEFAULT_IMAGE_STYLE;
@@ -2007,8 +1927,7 @@ function readStyle(node, objectStack) {
                   return type !== 'Polygon' && type !== 'MultiPolygon';
                 })
             );
-          }
-          if (type !== 'Polygon' && type !== 'MultiPolygon') {
+          } else if (type !== 'Polygon' && type !== 'MultiPolygon') {
             return geometry;
           }
         },
@@ -2035,8 +1954,7 @@ function readStyle(node, objectStack) {
                   return type === 'Polygon' || type === 'MultiPolygon';
                 })
             );
-          }
-          if (type === 'Polygon' || type === 'MultiPolygon') {
+          } else if (type === 'Polygon' || type === 'MultiPolygon') {
             return geometry;
           }
         },
@@ -2420,9 +2338,9 @@ function writeCoordinatesTextNode(node, coordinates, objectStack) {
   const stride = context['stride'];
 
   let dimension;
-  if (layout == 'XY' || layout == 'XYM') {
+  if (layout == GeometryLayout.XY || layout == GeometryLayout.XYM) {
     dimension = 2;
-  } else if (layout == 'XYZ' || layout == 'XYZM') {
+  } else if (layout == GeometryLayout.XYZ || layout == GeometryLayout.XYZM) {
     dimension = 3;
   } else {
     assert(false, 34); // Invalid geometry layout
@@ -2529,10 +2447,10 @@ const DOCUMENT_SERIALIZERS = makeStructureNS(NAMESPACE_URIS, {
  * @const
  * @param {*} value Value.
  * @param {Array<*>} objectStack Object stack.
- * @param {string} [nodeName] Node name.
+ * @param {string} [opt_nodeName] Node name.
  * @return {Node|undefined} Node.
  */
-const DOCUMENT_NODE_FACTORY = function (value, objectStack, nodeName) {
+const DOCUMENT_NODE_FACTORY = function (value, objectStack, opt_nodeName) {
   const parentNode = objectStack[objectStack.length - 1].node;
   return createElementNS(parentNode.namespaceURI, 'Placemark');
 };
@@ -2618,11 +2536,11 @@ const ICON_SERIALIZERS = makeStructureNS(
  * @const
  * @param {*} value Value.
  * @param {Array<*>} objectStack Object stack.
- * @param {string} [nodeName] Node name.
+ * @param {string} [opt_nodeName] Node name.
  * @return {Node|undefined} Node.
  */
-const GX_NODE_FACTORY = function (value, objectStack, nodeName) {
-  return createElementNS(GX_NAMESPACE_URIS[0], 'gx:' + nodeName);
+const GX_NODE_FACTORY = function (value, objectStack, opt_nodeName) {
+  return createElementNS(GX_NAMESPACE_URIS[0], 'gx:' + opt_nodeName);
 };
 
 /**
@@ -2710,9 +2628,9 @@ function writeIconStyle(node, style, objectStack) {
     if (anchor && (anchor[0] !== size[0] / 2 || anchor[1] !== size[1] / 2)) {
       const /** @type {Vec2} */ hotSpot = {
           x: anchor[0],
-          xunits: 'pixels',
+          xunits: IconAnchorUnits.PIXELS,
           y: size[1] - anchor[1],
-          yunits: 'pixels',
+          yunits: IconAnchorUnits.PIXELS,
         };
       properties['hotSpot'] = hotSpot;
     }
@@ -2865,10 +2783,10 @@ const GEOMETRY_TYPE_TO_NODENAME = {
  * @const
  * @param {*} value Value.
  * @param {Array<*>} objectStack Object stack.
- * @param {string} [nodeName] Node name.
+ * @param {string} [opt_nodeName] Node name.
  * @return {Node|undefined} Node.
  */
-const GEOMETRY_NODE_FACTORY = function (value, objectStack, nodeName) {
+const GEOMETRY_NODE_FACTORY = function (value, objectStack, opt_nodeName) {
   if (value) {
     const parentNode = objectStack[objectStack.length - 1].node;
     return createElementNS(

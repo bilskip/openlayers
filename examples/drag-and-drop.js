@@ -101,9 +101,14 @@ function download(fullpath, filename) {
       return response.blob();
     })
     .then(function (blob) {
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
+      if (navigator.msSaveBlob) {
+        // link download attribute does not work on MS browsers
+        navigator.msSaveBlob(blob, filename);
+      } else {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      }
     });
 }
 

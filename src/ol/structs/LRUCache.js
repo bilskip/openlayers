@@ -23,15 +23,16 @@ import {assert} from '../asserts.js';
  */
 class LRUCache {
   /**
-   * @param {number} [highWaterMark] High water mark.
+   * @param {number} [opt_highWaterMark] High water mark.
    */
-  constructor(highWaterMark) {
+  constructor(opt_highWaterMark) {
     /**
      * Desired max cache size after expireCache(). If set to 0, no cache entries
      * will be pruned at all.
      * @type {number}
      */
-    this.highWaterMark = highWaterMark !== undefined ? highWaterMark : 2048;
+    this.highWaterMark =
+      opt_highWaterMark !== undefined ? opt_highWaterMark : 2048;
 
     /**
      * @private
@@ -109,16 +110,15 @@ class LRUCache {
 
   /**
    * @param {string} key Key.
-   * @param {*} [options] Options (reserved for subclasses).
+   * @param {*} [opt_options] Options (reserved for subclasses).
    * @return {T} Value.
    */
-  get(key, options) {
+  get(key, opt_options) {
     const entry = this.entries_[key];
     assert(entry !== undefined, 15); // Tried to get a value for a key that does not exist in the cache
     if (entry === this.newest_) {
       return entry.value_;
-    }
-    if (entry === this.oldest_) {
+    } else if (entry === this.oldest_) {
       this.oldest_ = /** @type {Entry} */ (this.oldest_.newer);
       this.oldest_.older = null;
     } else {

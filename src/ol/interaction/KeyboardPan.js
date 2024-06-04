@@ -3,7 +3,7 @@
  */
 import EventType from '../events/EventType.js';
 import Interaction, {pan} from './Interaction.js';
-import Key from '../events/Key.js';
+import KeyCode from '../events/KeyCode.js';
 import {noModifierKeys, targetNotEditable} from '../events/condition.js';
 import {rotate as rotateCoordinate} from '../coordinate.js';
 
@@ -34,12 +34,12 @@ import {rotate as rotateCoordinate} from '../coordinate.js';
  */
 class KeyboardPan extends Interaction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options || {};
+    const options = opt_options || {};
 
     /**
      * @private
@@ -81,6 +81,7 @@ class KeyboardPan extends Interaction {
    * pressed).
    * @param {import("../MapBrowserEvent.js").default} mapBrowserEvent Map browser event.
    * @return {boolean} `false` to stop event propagation.
+   * @this {KeyboardPan}
    */
   handleEvent(mapBrowserEvent) {
     let stopEvent = false;
@@ -88,24 +89,24 @@ class KeyboardPan extends Interaction {
       const keyEvent = /** @type {KeyboardEvent} */ (
         mapBrowserEvent.originalEvent
       );
-      const key = keyEvent.key;
+      const keyCode = keyEvent.keyCode;
       if (
         this.condition_(mapBrowserEvent) &&
-        (key == Key.DOWN ||
-          key == Key.LEFT ||
-          key == Key.RIGHT ||
-          key == Key.UP)
+        (keyCode == KeyCode.DOWN ||
+          keyCode == KeyCode.LEFT ||
+          keyCode == KeyCode.RIGHT ||
+          keyCode == KeyCode.UP)
       ) {
         const map = mapBrowserEvent.map;
         const view = map.getView();
         const mapUnitsDelta = view.getResolution() * this.pixelDelta_;
         let deltaX = 0,
           deltaY = 0;
-        if (key == Key.DOWN) {
+        if (keyCode == KeyCode.DOWN) {
           deltaY = -mapUnitsDelta;
-        } else if (key == Key.LEFT) {
+        } else if (keyCode == KeyCode.LEFT) {
           deltaX = -mapUnitsDelta;
-        } else if (key == Key.RIGHT) {
+        } else if (keyCode == KeyCode.RIGHT) {
           deltaX = mapUnitsDelta;
         } else {
           deltaY = mapUnitsDelta;

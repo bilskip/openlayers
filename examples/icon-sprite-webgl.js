@@ -42,7 +42,7 @@ const style = {
   filter: [
     'any',
     ['==', ['var', 'filterShape'], 'all'],
-    ['==', ['var', 'filterShape'], ['get', 'shape', 'string']],
+    ['==', ['var', 'filterShape'], ['get', 'shape']],
   ],
   symbol: {
     symbolType: 'image',

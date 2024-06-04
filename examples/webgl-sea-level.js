@@ -15,9 +15,15 @@ const attributions =
 const elevation = [
   '+',
   -10000,
-  ['*', 0.1 * 255 * 256 * 256, ['band', 1]],
-  ['*', 0.1 * 255 * 256, ['band', 2]],
-  ['*', 0.1 * 255, ['band', 3]],
+  [
+    '*',
+    0.1 * 255,
+    [
+      '+',
+      ['*', 256 * 256, ['band', 1]],
+      ['+', ['*', 256, ['band', 2]], ['band', 3]],
+    ],
+  ],
 ];
 
 const layer = new TileLayer({
@@ -63,10 +69,12 @@ const map = new Map({
 
 const control = document.getElementById('level');
 const output = document.getElementById('output');
-control.addEventListener('input', function () {
+const listener = function () {
   output.innerText = control.value;
   layer.updateStyleVariables({level: parseFloat(control.value)});
-});
+};
+control.addEventListener('input', listener);
+control.addEventListener('change', listener);
 output.innerText = control.value;
 
 const locations = document.getElementsByClassName('location');

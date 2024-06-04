@@ -26,6 +26,13 @@ describe('ol/source/ImageArcGISRest', function () {
       );
       expect(source.getInterpolate()).to.be(false);
     });
+
+    it('is false if constructed with imageSmoothing: false', function () {
+      const source = new ImageArcGISRest(
+        Object.assign({imageSmoothing: false}, options)
+      );
+      expect(source.getInterpolate()).to.be(false);
+    });
   });
 
   describe('#getImage', function () {

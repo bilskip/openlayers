@@ -7,7 +7,7 @@ import Event from '../events/Event.js';
 import EventType from '../events/EventType.js';
 import Interaction from './Interaction.js';
 import {TRUE} from '../functions.js';
-import {get as getProjection, getUserProjection} from '../proj.js';
+import {get as getProjection} from '../proj.js';
 import {listen, unlistenByKey} from '../events.js';
 
 /**
@@ -44,10 +44,10 @@ export class DragAndDropEvent extends Event {
   /**
    * @param {DragAndDropEventType} type Type.
    * @param {File} file File.
-   * @param {Array<import("../Feature.js").default>} [features] Features.
-   * @param {import("../proj/Projection.js").default} [projection] Projection.
+   * @param {Array<import("../Feature.js").default>} [opt_features] Features.
+   * @param {import("../proj/Projection.js").default} [opt_projection] Projection.
    */
-  constructor(type, file, features, projection) {
+  constructor(type, file, opt_features, opt_projection) {
     super(type);
 
     /**
@@ -55,7 +55,7 @@ export class DragAndDropEvent extends Event {
      * @type {Array<import("../Feature.js").FeatureLike>|undefined}
      * @api
      */
-    this.features = features;
+    this.features = opt_features;
 
     /**
      * The dropped file.
@@ -69,7 +69,7 @@ export class DragAndDropEvent extends Event {
      * @type {import("../proj/Projection.js").default|undefined}
      * @api
      */
-    this.projection = projection;
+    this.projection = opt_projection;
   }
 }
 
@@ -87,16 +87,20 @@ export class DragAndDropEvent extends Event {
  * @classdesc
  * Handles input of vector data by drag and drop.
  *
+ * Note that the DragAndDrop interaction uses the TextDecoder() constructor if the supplied
+ * combination of formats read both text string and ArrayBuffer sources. Older browsers such
+ * as IE which do not support this will need a TextDecoder polyfill to be loaded before use.
+ *
  * @api
  *
  * @fires DragAndDropEvent
  */
 class DragAndDrop extends Interaction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     super({
       handleEvent: TRUE,
@@ -178,11 +182,8 @@ class DragAndDrop extends Interaction {
     const map = this.getMap();
     let projection = this.projection_;
     if (!projection) {
-      projection = getUserProjection();
-      if (!projection) {
-        const view = map.getView();
-        projection = view.getProjection();
-      }
+      const view = map.getView();
+      projection = view.getProjection();
     }
 
     let text;
@@ -253,7 +254,7 @@ class DragAndDrop extends Interaction {
    * Remove the interaction from its current map and attach it to the new map.
    * Subclasses may set up event handlers to get notified about changes to
    * the map here.
-   * @param {import("../Map.js").default} map Map.
+   * @param {import("../PluggableMap.js").default} map Map.
    */
   setMap(map) {
     this.unregisterListeners_();

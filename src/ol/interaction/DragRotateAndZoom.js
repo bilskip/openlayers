@@ -26,10 +26,10 @@ import {mouseOnly, shiftKeyOnly} from '../events/condition.js';
  */
 class DragRotateAndZoom extends PointerInteraction {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     super(/** @type {import("./Pointer.js").Options} */ (options));
 
@@ -128,8 +128,9 @@ class DragRotateAndZoom extends PointerInteraction {
       this.lastAngle_ = undefined;
       this.lastMagnitude_ = undefined;
       return true;
+    } else {
+      return false;
     }
-    return false;
   }
 }
 

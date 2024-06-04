@@ -43,13 +43,15 @@ function shade(inputs, data) {
     scaled;
   function calculateElevation(pixel) {
     // The method used to extract elevations from the DEM.
-    // In this case the format used is Terrarium
-    // red * 256 + green + blue / 256 - 32768
+    // In this case the format used is
+    // red + green * 2 + blue * 3
     //
     // Other frequently used methods include the Mapbox format
     // (red * 256 * 256 + green * 256 + blue) * 0.1 - 10000
+    // and the Terrarium format
+    // (red * 256 + green + blue / 256) - 32768
     //
-    return pixel[0] * 256 + pixel[1] + pixel[2] / 256 - 32768;
+    return pixel[0] + pixel[1] * 2 + pixel[2] * 3;
   }
   for (pixelY = 0; pixelY <= maxY; ++pixelY) {
     y0 = pixelY === 0 ? 0 : pixelY - 1;
@@ -122,11 +124,8 @@ function shade(inputs, data) {
 }
 
 const elevation = new XYZ({
-  url: 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png',
+  url: 'https://{a-d}.tiles.mapbox.com/v3/aj.sf-dem/{z}/{x}/{y}.png',
   crossOrigin: 'anonymous',
-  maxZoom: 15,
-  attributions:
-    '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank">Data sources and attribution</a>',
 });
 
 const raster = new Raster({
@@ -147,7 +146,10 @@ const map = new Map({
     }),
   ],
   view: new View({
+    extent: [-13675026, 4439648, -13580856, 4580292],
     center: [-13615645, 4497969],
+    minZoom: 10,
+    maxZoom: 16,
     zoom: 13,
   }),
 });
@@ -157,10 +159,12 @@ const controls = {};
 controlIds.forEach(function (id) {
   const control = document.getElementById(id);
   const output = document.getElementById(id + 'Out');
-  control.addEventListener('input', function () {
+  const listener = function () {
     output.innerText = control.value;
     raster.changed();
-  });
+  };
+  control.addEventListener('input', listener);
+  control.addEventListener('change', listener);
   output.innerText = control.value;
   controls[id] = control;
 });

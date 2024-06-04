@@ -4,8 +4,8 @@
 import Event from './events/Event.js';
 import ObjectEventType from './ObjectEventType.js';
 import Observable from './Observable.js';
+import {assign, isEmpty} from './obj.js';
 import {getUid} from './util.js';
-import {isEmpty} from './obj.js';
 
 /**
  * @classdesc
@@ -89,9 +89,9 @@ export class ObjectEvent extends Event {
  */
 class BaseObject extends Observable {
   /**
-   * @param {Object<string, *>} [values] An object with key-value pairs.
+   * @param {Object<string, *>} [opt_values] An object with key-value pairs.
    */
-  constructor(values) {
+  constructor(opt_values) {
     super();
 
     /***
@@ -121,8 +121,8 @@ class BaseObject extends Observable {
      */
     this.values_ = null;
 
-    if (values !== undefined) {
-      this.setProperties(values);
+    if (opt_values !== undefined) {
+      this.setProperties(opt_values);
     }
   }
 
@@ -155,7 +155,7 @@ class BaseObject extends Observable {
    * @api
    */
   getProperties() {
-    return (this.values_ && Object.assign({}, this.values_)) || {};
+    return (this.values_ && assign({}, this.values_)) || {};
   }
 
   /**
@@ -201,12 +201,12 @@ class BaseObject extends Observable {
    * Sets a value.
    * @param {string} key Key name.
    * @param {*} value Value.
-   * @param {boolean} [silent] Update without triggering an event.
+   * @param {boolean} [opt_silent] Update without triggering an event.
    * @api
    */
-  set(key, value, silent) {
+  set(key, value, opt_silent) {
     const values = this.values_ || (this.values_ = {});
-    if (silent) {
+    if (opt_silent) {
       values[key] = value;
     } else {
       const oldValue = values[key];
@@ -221,12 +221,12 @@ class BaseObject extends Observable {
    * Sets a collection of key-value pairs.  Note that this changes any existing
    * properties and adds new ones (it does not remove any existing properties).
    * @param {Object<string, *>} values Values.
-   * @param {boolean} [silent] Update without triggering an event.
+   * @param {boolean} [opt_silent] Update without triggering an event.
    * @api
    */
-  setProperties(values, silent) {
+  setProperties(values, opt_silent) {
     for (const key in values) {
-      this.set(key, values[key], silent);
+      this.set(key, values[key], opt_silent);
     }
   }
 
@@ -239,23 +239,23 @@ class BaseObject extends Observable {
     if (!source.values_) {
       return;
     }
-    Object.assign(this.values_ || (this.values_ = {}), source.values_);
+    assign(this.values_ || (this.values_ = {}), source.values_);
   }
 
   /**
    * Unsets a property.
    * @param {string} key Key name.
-   * @param {boolean} [silent] Unset without triggering an event.
+   * @param {boolean} [opt_silent] Unset without triggering an event.
    * @api
    */
-  unset(key, silent) {
+  unset(key, opt_silent) {
     if (this.values_ && key in this.values_) {
       const oldValue = this.values_[key];
       delete this.values_[key];
       if (isEmpty(this.values_)) {
         this.values_ = null;
       }
-      if (!silent) {
+      if (!opt_silent) {
         this.notify(key, oldValue);
       }
     }

@@ -31,22 +31,22 @@ describe('ol.interaction.KeyboardPan', function () {
         preventDefault: Event.prototype.preventDefault,
       });
 
-      event.originalEvent.key = 'ArrowDown';
+      event.originalEvent.keyCode = 40; // DOWN
       map.handleMapBrowserEvent(event);
       expect(spy.getCall(0).args[0].center).to.eql([0, -128]);
       view.setCenter([0, 0]);
 
-      event.originalEvent.key = 'ArrowUp';
+      event.originalEvent.keyCode = 38; // UP
       map.handleMapBrowserEvent(event);
       expect(spy.getCall(1).args[0].center).to.eql([0, 128]);
       view.setCenter([0, 0]);
 
-      event.originalEvent.key = 'ArrowLeft';
+      event.originalEvent.keyCode = 37; // LEFT
       map.handleMapBrowserEvent(event);
       expect(spy.getCall(2).args[0].center).to.eql([-128, 0]);
       view.setCenter([0, 0]);
 
-      event.originalEvent.key = 'ArrowRight';
+      event.originalEvent.keyCode = 39; // RIGHT
       map.handleMapBrowserEvent(event);
       expect(spy.getCall(3).args[0].center).to.eql([128, 0]);
       view.setCenter([0, 0]);

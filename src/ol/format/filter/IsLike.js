@@ -13,21 +13,21 @@ class IsLike extends Comparison {
    * [constructor description]
    * @param {!string} propertyName Name of the context property to compare.
    * @param {!string} pattern Text pattern.
-   * @param {string} [wildCard] Pattern character which matches any sequence of
+   * @param {string} [opt_wildCard] Pattern character which matches any sequence of
    *    zero or more string characters. Default is '*'.
-   * @param {string} [singleChar] pattern character which matches any single
+   * @param {string} [opt_singleChar] pattern character which matches any single
    *    string character. Default is '.'.
-   * @param {string} [escapeChar] Escape character which can be used to escape
+   * @param {string} [opt_escapeChar] Escape character which can be used to escape
    *    the pattern characters. Default is '!'.
-   * @param {boolean} [matchCase] Case-sensitive?
+   * @param {boolean} [opt_matchCase] Case-sensitive?
    */
   constructor(
     propertyName,
     pattern,
-    wildCard,
-    singleChar,
-    escapeChar,
-    matchCase
+    opt_wildCard,
+    opt_singleChar,
+    opt_escapeChar,
+    opt_matchCase
   ) {
     super('PropertyIsLike', propertyName);
 
@@ -39,22 +39,22 @@ class IsLike extends Comparison {
     /**
      * @type {!string}
      */
-    this.wildCard = wildCard !== undefined ? wildCard : '*';
+    this.wildCard = opt_wildCard !== undefined ? opt_wildCard : '*';
 
     /**
      * @type {!string}
      */
-    this.singleChar = singleChar !== undefined ? singleChar : '.';
+    this.singleChar = opt_singleChar !== undefined ? opt_singleChar : '.';
 
     /**
      * @type {!string}
      */
-    this.escapeChar = escapeChar !== undefined ? escapeChar : '!';
+    this.escapeChar = opt_escapeChar !== undefined ? opt_escapeChar : '!';
 
     /**
      * @type {boolean|undefined}
      */
-    this.matchCase = matchCase;
+    this.matchCase = opt_matchCase;
   }
 }
 

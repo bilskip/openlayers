@@ -107,7 +107,7 @@ function search(query) {
           if (result) {
             const code = result['code'];
             const name = result['name'];
-            const proj4def = result['wkt'];
+            const proj4def = result['proj4'];
             const bbox = result['bbox'];
             if (
               code &&
@@ -139,19 +139,12 @@ searchButton.onclick = function (event) {
 /**
  * Handle checkbox change events.
  */
-function onReprojectionChange() {
+renderEdgesCheckbox.onchange = function () {
   osmSource.setRenderReprojectionEdges(renderEdgesCheckbox.checked);
-}
-function onGraticuleChange() {
-  graticule.setVisible(showGraticuleCheckbox.checked);
-}
-function onTilesChange() {
+};
+showTilesCheckbox.onchange = function () {
   debugLayer.setVisible(showTilesCheckbox.checked);
-}
-showGraticuleCheckbox.addEventListener('change', onGraticuleChange);
-renderEdgesCheckbox.addEventListener('change', onReprojectionChange);
-showTilesCheckbox.addEventListener('change', onTilesChange);
-
-onReprojectionChange();
-onGraticuleChange();
-onTilesChange();
+};
+showGraticuleCheckbox.onchange = function () {
+  graticule.setVisible(showGraticuleCheckbox.checked);
+};

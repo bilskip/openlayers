@@ -43,7 +43,7 @@ export function deflateCoordinates(
  * @param {number} offset Offset.
  * @param {Array<Array<import("../../coordinate.js").Coordinate>>} coordinatess Coordinatess.
  * @param {number} stride Stride.
- * @param {Array<number>} [ends] Ends.
+ * @param {Array<number>} [opt_ends] Ends.
  * @return {Array<number>} Ends.
  */
 export function deflateCoordinatesArray(
@@ -51,9 +51,9 @@ export function deflateCoordinatesArray(
   offset,
   coordinatess,
   stride,
-  ends
+  opt_ends
 ) {
-  ends = ends ? ends : [];
+  const ends = opt_ends ? opt_ends : [];
   let i = 0;
   for (let j = 0, jj = coordinatess.length; j < jj; ++j) {
     const end = deflateCoordinates(
@@ -74,7 +74,7 @@ export function deflateCoordinatesArray(
  * @param {number} offset Offset.
  * @param {Array<Array<Array<import("../../coordinate.js").Coordinate>>>} coordinatesss Coordinatesss.
  * @param {number} stride Stride.
- * @param {Array<Array<number>>} [endss] Endss.
+ * @param {Array<Array<number>>} [opt_endss] Endss.
  * @return {Array<Array<number>>} Endss.
  */
 export function deflateMultiCoordinatesArray(
@@ -82,9 +82,9 @@ export function deflateMultiCoordinatesArray(
   offset,
   coordinatesss,
   stride,
-  endss
+  opt_endss
 ) {
-  endss = endss ? endss : [];
+  const endss = opt_endss ? opt_endss : [];
   let i = 0;
   for (let j = 0, jj = coordinatesss.length; j < jj; ++j) {
     const ends = deflateCoordinatesArray(
@@ -94,9 +94,6 @@ export function deflateMultiCoordinatesArray(
       stride,
       endss[i]
     );
-    if (ends.length === 0) {
-      ends[0] = offset;
-    }
     endss[i++] = ends;
     offset = ends[ends.length - 1];
   }

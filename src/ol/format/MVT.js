@@ -4,6 +4,7 @@
 //FIXME Implement projection handling
 
 import FeatureFormat, {transformGeometryWithOptions} from './Feature.js';
+import GeometryLayout from '../geom/GeometryLayout.js';
 import LineString from '../geom/LineString.js';
 import MultiLineString from '../geom/MultiLineString.js';
 import MultiPoint from '../geom/MultiPoint.js';
@@ -13,6 +14,7 @@ import Point from '../geom/Point.js';
 import Polygon from '../geom/Polygon.js';
 import Projection from '../proj/Projection.js';
 import RenderFeature from '../render/Feature.js';
+import Units from '../proj/Units.js';
 import {assert} from '../asserts.js';
 import {get} from '../proj.js';
 import {inflateEnds} from '../geom/flat/orient.js';
@@ -34,24 +36,24 @@ import {inflateEnds} from '../geom/flat/orient.js';
  * @classdesc
  * Feature format for reading data in the Mapbox MVT format.
  *
- * @param {Options} [options] Options.
+ * @param {Options} [opt_options] Options.
  * @api
  */
 class MVT extends FeatureFormat {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
+  constructor(opt_options) {
     super();
 
-    options = options ? options : {};
+    const options = opt_options ? opt_options : {};
 
     /**
      * @type {Projection}
      */
     this.dataProjection = new Projection({
       code: '',
-      units: 'tile-pixels',
+      units: Units.TILE_PIXELS,
     });
 
     /**
@@ -202,18 +204,18 @@ class MVT extends FeatureFormat {
         const endss = inflateEnds(flatCoordinates, ends);
         geom =
           endss.length > 1
-            ? new MultiPolygon(flatCoordinates, 'XY', endss)
-            : new Polygon(flatCoordinates, 'XY', ends);
+            ? new MultiPolygon(flatCoordinates, GeometryLayout.XY, endss)
+            : new Polygon(flatCoordinates, GeometryLayout.XY, ends);
       } else {
         geom =
           geometryType === 'Point'
-            ? new Point(flatCoordinates, 'XY')
+            ? new Point(flatCoordinates, GeometryLayout.XY)
             : geometryType === 'LineString'
-            ? new LineString(flatCoordinates, 'XY')
+            ? new LineString(flatCoordinates, GeometryLayout.XY)
             : geometryType === 'MultiPoint'
-            ? new MultiPoint(flatCoordinates, 'XY')
+            ? new MultiPoint(flatCoordinates, GeometryLayout.XY)
             : geometryType === 'MultiLineString'
-            ? new MultiLineString(flatCoordinates, 'XY', ends)
+            ? new MultiLineString(flatCoordinates, GeometryLayout.XY, ends)
             : null;
       }
       const ctor = /** @type {typeof import("../Feature.js").default} */ (
@@ -245,13 +247,15 @@ class MVT extends FeatureFormat {
    * Read all features.
    *
    * @param {ArrayBuffer} source Source.
-   * @param {import("./Feature.js").ReadOptions} [options] Read options.
+   * @param {import("./Feature.js").ReadOptions} [opt_options] Read options.
    * @return {Array<import("../Feature.js").FeatureLike>} Features.
    * @api
    */
-  readFeatures(source, options) {
+  readFeatures(source, opt_options) {
     const layers = this.layers_;
-    options = this.adaptOptions(options);
+    const options = /** @type {import("./Feature.js").ReadOptions} */ (
+      this.adaptOptions(opt_options)
+    );
     const dataProjection = get(options.dataProjection);
     dataProjection.setWorldExtent(options.extent);
     options.dataProjection = dataProjection;
@@ -260,7 +264,7 @@ class MVT extends FeatureFormat {
     const pbfLayers = pbf.readFields(layersPBFReader, {});
     const features = [];
     for (const name in pbfLayers) {
-      if (layers && !layers.includes(name)) {
+      if (layers && layers.indexOf(name) == -1) {
         continue;
       }
       const pbfLayer = pbfLayers[name];

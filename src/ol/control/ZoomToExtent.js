@@ -27,10 +27,10 @@ import {fromExtent as polygonFromExtent} from '../geom/Polygon.js';
  */
 class ZoomToExtent extends Control {
   /**
-   * @param {Options} [options] Options.
+   * @param {Options} [opt_options] Options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     super({
       element: document.createElement('div'),

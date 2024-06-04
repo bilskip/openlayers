@@ -27,8 +27,6 @@ const Direction = {
  * @property {number} [duration=200] Animation duration in milliseconds.
  * @property {function(import("../MapEvent.js").default):void} [render] Function called when the control
  * should be re-rendered. This is called in a `requestAnimationFrame` callback.
- * @property {HTMLElement|string} [target] Specify a target if you want the control to be
- * rendered outside of the map's viewport.
  */
 
 /**
@@ -43,13 +41,12 @@ const Direction = {
  */
 class ZoomSlider extends Control {
   /**
-   * @param {Options} [options] Zoom slider options.
+   * @param {Options} [opt_options] Zoom slider options.
    */
-  constructor(options) {
-    options = options ? options : {};
+  constructor(opt_options) {
+    const options = opt_options ? opt_options : {};
 
     super({
-      target: options.target,
       element: document.createElement('div'),
       render: options.render,
     });
@@ -167,7 +164,7 @@ class ZoomSlider extends Control {
    * Pass `null` to just remove the control from the current map.
    * Subclasses may set up event handlers to get notified about changes to
    * the map here.
-   * @param {import("../Map.js").default|null} map Map.
+   * @param {import("../PluggableMap.js").default|null} map Map.
    * @api
    */
   setMap(map) {
