@@ -38,6 +38,7 @@ const style = new Style({
     const bottomLeft = getBottomLeft(extent);
     const left = bottomLeft[0];
     const bottom = bottomLeft[1];
+    console.log(flag);
     context.drawImage(flag, left, bottom, width, height);
     context.restore();
   },

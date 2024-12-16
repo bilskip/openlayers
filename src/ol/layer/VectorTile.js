@@ -17,7 +17,7 @@ import {assert} from '../asserts.js';
  */
 
 /**
- * @typedef {'hybrid' | 'vector'} VectorTileRenderType
+ * @typedef {'hybrid' | 'vector' | 'image'} VectorTileRenderType
  */
 
 /***
@@ -140,10 +140,6 @@ class VectorTileLayer extends BaseVectorLayer {
     this.cacheSize_ = cacheSize;
 
     const renderMode = options.renderMode || 'hybrid';
-    assert(
-      renderMode == 'hybrid' || renderMode == 'vector',
-      "`renderMode` must be `'hybrid'` or `'vector'`",
-    );
 
     /**
      * @private

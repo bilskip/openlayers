@@ -577,7 +577,6 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     const tilePixelRatio = tileSource.getTilePixelRatio(pixelRatio);
 
     this.prepareContainer(frameState, target);
-
     // desired dimensions of the canvas in pixels
     const width = this.context.canvas.width;
     const height = this.context.canvas.height;
@@ -865,7 +864,6 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
     if (!this.renderComplete && !allTilesIdle) {
       frameState.animate = true;
     }
-
     return this.container;
   }
 
@@ -954,6 +952,7 @@ class CanvasTileLayerRenderer extends CanvasLayerRenderer {
    * @protected
    */
   getTileImage(tile) {
+    // console.log(tile.getImage())
     return tile.getImage();
   }
 

@@ -1435,7 +1435,7 @@ describe('ol/Map', function () {
         target.style.top = '10px';
         target.style.left = '20px';
         target.style.width = '800px';
-        target.style.height = '400px';
+        target.style.height = '800px';
 
         document.body.appendChild(target);
       });

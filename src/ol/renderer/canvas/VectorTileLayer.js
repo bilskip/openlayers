@@ -56,6 +56,7 @@ const IMAGE_REPLAYS = {
 const VECTOR_REPLAYS = {
   'hybrid': ['Image', 'Text', 'Default'],
   'vector': ['Polygon', 'Circle', 'LineString', 'Image', 'Text', 'Default'],
+  'image': ['Default'],
 };
 
 /**
