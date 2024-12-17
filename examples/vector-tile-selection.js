@@ -1,16 +1,20 @@
-import MVT from '../src/ol/format/MVT.js';
-import Map from '../src/ol/Map.js';
-import OSM from '../src/ol/source/OSM.js';
-import TileLayer from '../src/ol/layer/Tile.js';
-import VectorTileLayer from '../src/ol/layer/VectorTile.js';
-import VectorTileSource from '../src/ol/source/VectorTile.js';
-import View from '../src/ol/View.js';
-import {Fill, Stroke, Style, Circle} from '../src/ol/style.js';
-import {getBottomLeft, getHeight, getWidth} from 'ol/extent.js';
-import Feature from '../src/ol/Feature.js';
-import Worker from 'worker-loader!./worker.js'; //eslint-disable-line
-import { compose, create, toString as toTransformString } from 'ol/transform.js';
-import {toContext} from 'ol/render.js';
+import MVT from "../src/ol/format/MVT.js";
+import Map from "../src/ol/Map.js";
+import OSM from "../src/ol/source/OSM.js";
+import TileLayer from "../src/ol/layer/Tile.js";
+import VectorTileLayer from "../src/ol/layer/VectorTile.js";
+import VectorTileSource from "../src/ol/source/VectorTile.js";
+import View from "../src/ol/View.js";
+import { Fill, Stroke, Style, Circle } from "../src/ol/style.js";
+import { getBottomLeft, getHeight, getWidth } from "ol/extent.js";
+import Feature from "../src/ol/Feature.js";
+import Worker from "worker-loader!./worker.js"; //eslint-disable-line
+import {
+  compose,
+  create,
+  toString as toTransformString,
+} from "ol/transform.js";
+import { toContext } from "ol/render.js";
 
 const worker = new Worker();
 
@@ -45,7 +49,7 @@ function updateContainerTransform() {
         renderedResolution / resolution,
         rotation - renderedRotation,
         0,
-        0,
+        0
       );
     } else {
       compose(
@@ -56,7 +60,7 @@ function updateContainerTransform() {
         renderedResolution / resolution,
         rotation - renderedRotation,
         0,
-        0,
+        0
       );
     }
     transformContainer.style.transform = toTransformString(transform);
@@ -87,7 +91,7 @@ function updateContainerTransform() {
 
 const vtLayerBase = new VectorTileLayer({
   declutter: false,
-  renderMode: 'vector',
+  renderMode: "vector",
   // style: new Style({
   //   hitDetectionRenderer(pixelCoordinates, state) {
   //     const context = state.context;
@@ -105,14 +109,16 @@ const vtLayerBase = new VectorTileLayer({
   source: new VectorTileSource({
     maxZoom: 15,
     format: new MVT({
-      idProperty: 'iso_a3',
+      idProperty: "iso_a3",
       featureClass: Feature,
     }),
     tileLoadFunction: function (tile) {
       tile.setLoader(async (extent, resolution, featureProjection) => {
         let responseArrayBuffer;
         const [z, x, y] = tile.tileCoord;
-        const r = await fetch(`https://aquagis3-dev.gis.support/api/vtiles/63/${z}/${x}/${y}.pbf`);
+        const r = await fetch(
+          `https://aquagis3-dev.gis.support/api/vtiles/63/${z}/${x}/${y}.pbf`
+        );
         responseArrayBuffer = await r.arrayBuffer();
         const features = tile.getFormat().readFeatures(responseArrayBuffer, {
           extent,
@@ -122,28 +128,28 @@ const vtLayerBase = new VectorTileLayer({
         tile.setFeatures(features);
       });
     },
-    url: 'https://aquagis3-dev.gis.support/api/vtiles/63/{z}/{x}/{y}.pbf',
+    url: "https://aquagis3-dev.gis.support/api/vtiles/63/{z}/{x}/{y}.pbf",
   }),
 });
 
 const vtLayer = new VectorTileLayer({
   declutter: false,
-  renderMode: 'vector',
+  renderMode: "vector",
   render: function (frameState) {
     if (!container) {
-      container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.width = '100%';
-      container.style.height = '100%';
-      transformContainer = document.createElement('div');
-      transformContainer.style.position = 'absolute';
-      transformContainer.style.width = '100%';
-      transformContainer.style.height = '100%';
+      container = document.createElement("div");
+      container.style.position = "absolute";
+      container.style.width = "100%";
+      container.style.height = "100%";
+      transformContainer = document.createElement("div");
+      transformContainer.style.position = "absolute";
+      transformContainer.style.width = "100%";
+      transformContainer.style.height = "100%";
       container.appendChild(transformContainer);
-      canvas = document.createElement('canvas');
-      canvas.style.position = 'absolute';
-      canvas.style.left = '0';
-      canvas.style.transformOrigin = 'top left';
+      canvas = document.createElement("canvas");
+      canvas.style.position = "absolute";
+      canvas.style.left = "0";
+      canvas.style.transformOrigin = "top left";
       transformContainer.appendChild(canvas);
     }
     mainThreadFrameState = frameState;
@@ -151,7 +157,7 @@ const vtLayer = new VectorTileLayer({
     if (!rendering) {
       rendering = true;
       worker.postMessage({
-        action: 'render',
+        action: "render",
         frameState: {
           layerIndex: 0,
           wantedTiles: {},
@@ -191,14 +197,16 @@ const vtLayer = new VectorTileLayer({
   source: new VectorTileSource({
     maxZoom: 15,
     format: new MVT({
-      idProperty: 'iso_a3',
+      idProperty: "iso_a3",
       featureClass: Feature,
     }),
     tileLoadFunction: function (tile) {
       tile.setLoader(async (extent, resolution, featureProjection) => {
         let responseArrayBuffer;
         const [z, x, y] = tile.tileCoord;
-        const r = await fetch(`https://aquagis3-dev.gis.support/api/vtiles/63/${z}/${x}/${y}.pbf`);
+        const r = await fetch(
+          `https://aquagis3-dev.gis.support/api/vtiles/63/${z}/${x}/${y}.pbf`
+        );
         responseArrayBuffer = await r.arrayBuffer();
         const features = tile.getFormat().readFeatures(responseArrayBuffer, {
           extent,
@@ -208,7 +216,7 @@ const vtLayer = new VectorTileLayer({
         tile.setFeatures(features);
       });
     },
-    url: 'https://aquagis3-dev.gis.support/api/vtiles/63/{z}/{x}/{y}.pbf',
+    url: "https://aquagis3-dev.gis.support/api/vtiles/63/{z}/{x}/{y}.pbf",
   }),
 });
 
@@ -220,7 +228,7 @@ const map = new Map({
     // vtLayerBase,
     vtLayer,
   ],
-  target: 'map',
+  target: "map",
   view: new View({
     center: [2336277.818634676, 6839933.167533613],
     zoom: 14,
@@ -228,19 +236,19 @@ const map = new Map({
   }),
 });
 
-worker.addEventListener('message', message => {
-  if (message.data.action === 'getFeatures') {
+worker.addEventListener("message", (message) => {
+  if (message.data.action === "getFeatures") {
     // showInfo(message.data.features);
-  } else if (message.data.action === 'requestRender') {
+  } else if (message.data.action === "requestRender") {
     // Worker requested a new render frame
     map.render();
-  } else if (canvas && message.data.action === 'rendered') {
+  } else if (canvas && message.data.action === "rendered") {
     // Worker provides a new render frame
     requestAnimationFrame(function () {
       const imageData = message.data.imageData;
       canvas.width = imageData.width;
       canvas.height = imageData.height;
-      canvas.getContext('2d').drawImage(imageData, 0, 0);
+      canvas.getContext("2d").drawImage(imageData, 0, 0);
       canvas.style.transform = message.data.transform;
       workerFrameState = message.data.frameState;
       updateContainerTransform();
@@ -249,13 +257,26 @@ worker.addEventListener('message', message => {
   }
 });
 
-map.on('click', (e) => {
-  map.forEachFeatureAtPixel(e.pixel, f => {
+const forEachFeatureAtPixel = (pixel, callback) => {
+  let fts = [];
+  worker.postMessage({ action: "requestFeature", pixel });
+  worker.onmessage = (msg) => {
+    if (msg.data.action !== "getFeatures") return;
+    fts = [...fts, ...msg.data.features];
+    console.log(fts);
+  };
+  map.forEachFeatureAtPixel(pixel, (f) => {
+    fts.push(f);
+  });
+};
+
+map.on("click", (e) => {
+  forEachFeatureAtPixel(e.pixel, (f) => {
     console.log(f);
   });
-})
+});
 
-console.log('ok'); // eslint-disable-line no-console
+console.log("ok"); // eslint-disable-line no-console
 
 // Selection
 // const selectionLayer = new VectorTileLayer({

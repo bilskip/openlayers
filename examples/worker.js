@@ -1,19 +1,19 @@
-import MVT from 'ol/format/MVT.js';
+import MVT from "ol/format/MVT.js";
 import TileQueue, {
   getTilePriority as tilePriorityFunction,
-} from 'ol/TileQueue.js';
-import VectorTileLayer from 'ol/layer/VectorTile.js';
-import VectorTileSource from 'ol/source/VectorTile.js';
-import {get} from 'ol/proj.js';
-import {inView} from 'ol/layer/Layer.js';
-import {stylefunction} from 'ol-mapbox-style';
-import {Circle, Fill, Style, Text} from 'ol/style';
-import {VectorImage} from 'ol/layer';
-import VectorSource from 'ol/source/Vector';
-import {createXYZ} from 'ol/tilegrid';
-import {Feature} from 'ol';
-import {tile} from 'ol/loadingstrategy';
-import {containsExtent} from 'ol/extent';
+} from "ol/TileQueue.js";
+import VectorTileLayer from "ol/layer/VectorTile.js";
+import VectorTileSource from "ol/source/VectorTile.js";
+import { get } from "ol/proj.js";
+import { inView } from "ol/layer/Layer.js";
+import { stylefunction } from "ol-mapbox-style";
+import { Circle, Fill, Style, Text } from "ol/style";
+import { VectorImage } from "ol/layer";
+import VectorSource from "ol/source/Vector";
+import { createXYZ } from "ol/tilegrid";
+import { Feature } from "ol";
+import { tile } from "ol/loadingstrategy";
+import { containsExtent } from "ol/extent";
 // import store from '../store';
 // import api from '@/services/api';
 
@@ -61,8 +61,8 @@ let frameState, pixelRatio, rendererTransform;
 const canvas = new OffscreenCanvas(1, 1);
 // OffscreenCanvas does not have a style, so we mock it
 canvas.style = {};
-const context = canvas.getContext('2d');
-console.log('OK');
+const context = canvas.getContext("2d");
+console.log("OK");
 
 const latarnieId = 63;
 
@@ -76,10 +76,10 @@ let sourceLat;
 sourceLat = new VectorTileSource({
   maxZoom: 15,
   format: new MVT({
-    idProperty: 'iso_a3',
+    idProperty: "iso_a3",
     featureClass: Feature,
   }),
-  url: 'https://aquagis3-dev.gis.support/api/vtiles/63/{z}/{x}/{y}.pbf',
+  url: "https://aquagis3-dev.gis.support/api/vtiles/63/{z}/{x}/{y}.pbf",
   // 'https://ahocevar.com/geoserver/gwc/service/tms/1.0.0/' +
   // 'ne:ne_10m_admin_0_countries@EPSG%3A900913@pbf/{z}/{x}/{-y}.pbf',
 });
@@ -93,6 +93,7 @@ function loadStyles() {
   const layer = new VectorTileLayer({
     declutter: false,
     source,
+    projection: "EPSG:3857",
     style: new Style({
       // text: new Text({
       //   text: 'test',
@@ -100,7 +101,7 @@ function loadStyles() {
       image: new Circle({
         radius: 5,
         fill: new Fill({
-          color: 'red',
+          color: "red",
         }),
       }),
     }),
@@ -119,7 +120,7 @@ function loadStyles() {
     rendererTransform = transform;
   };
   layers.push(layer);
-  worker.postMessage({action: 'requestRender'});
+  worker.postMessage({ action: "requestRender" });
 }
 
 // Minimal map-like functionality for rendering
@@ -130,16 +131,32 @@ const tileQueue = new TileQueue(
       tile,
       tileSourceKey,
       tileCenter,
-      tileResolution,
+      tileResolution
     ),
-  () => worker.postMessage({action: 'requestRender'}),
+  () => worker.postMessage({ action: "requestRender" })
 );
 
 const maxTotalLoading = 8;
 const maxNewLoads = 2;
 
-worker.addEventListener('message', (event) => {
-  if (event.data.action !== 'render') {
+worker.addEventListener("message", (event) => {
+  if (event.data.action === "requestFeature") {
+    const layersInView = layers.filter((l) =>
+      inView(l.getLayerState(), frameState.viewState)
+    );
+    const observables = layersInView.map((l) =>
+      l.getFeatures(event.data.pixel)
+    );
+    Promise.all(observables).then((res) => {
+      const features = res.flat();
+      worker.postMessage({
+        action: "getFeatures",
+        features: features.map((e) => e.ol_uid),
+      });
+    });
+    return;
+  }
+  if (event.data.action !== "render") {
     return;
   }
   frameState = event.data.frameState;
@@ -148,7 +165,7 @@ worker.addEventListener('message', (event) => {
     loadStyles();
   }
   frameState.tileQueue = tileQueue;
-  frameState.viewState.projection = get('EPSG:3857');
+  frameState.viewState.projection = get("EPSG:3857");
   frameState.layerStatesArray = layers.map((l) => l.getLayerState());
   layers.forEach((layer) => {
     if (inView(layer.getLayerState(), frameState.viewState)) {
@@ -174,7 +191,7 @@ worker.addEventListener('message', (event) => {
   const imageData = canvas.transferToImageBitmap();
   worker.postMessage(
     {
-      action: 'rendered',
+      action: "rendered",
       imageData: imageData,
       transform: rendererTransform,
       frameState: {
@@ -192,6 +209,6 @@ worker.addEventListener('message', (event) => {
           frameState.pixelToCoordinateTransform.slice(0),
       },
     },
-    [imageData],
+    [imageData]
   );
 });
